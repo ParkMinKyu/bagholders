@@ -38,7 +38,21 @@ async function ensureInit(): Promise<void> {
     global.__bagDbInit = (async () => {
       const c = getClient();
 
-      await c.execute(
+      // Fast path: 단일 SELECT로 schema가 최신인지 확인. 최신이면 추가 DDL 생략.
+      let current = 0;
+      try {
+        const ver = await c.execute({
+          sql: "SELECT value FROM schema_meta WHERE key = 'posts_version'",
+          args: [],
+        });
+        current = (ver.rows[0]?.value as number | undefined) ?? 0;
+        if (current === SCHEMA_VERSION) return;
+      } catch {
+        // schema_meta가 아직 없음 → 풀 init 진행
+      }
+
+      // Cold path: 모든 DDL을 단일 batch에 묶어 1회 round-trip으로 실행.
+      const stmts: string[] = [
         `CREATE TABLE IF NOT EXISTS users (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           username TEXT NOT NULL UNIQUE,
@@ -46,34 +60,21 @@ async function ensureInit(): Promise<void> {
           bio TEXT NOT NULL DEFAULT '',
           created_at INTEGER NOT NULL
         )`,
-      );
-      await c.execute(
         `CREATE TABLE IF NOT EXISTS sessions (
           token TEXT PRIMARY KEY,
           user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
           created_at INTEGER NOT NULL,
           expires_at INTEGER NOT NULL
         )`,
-      );
-      await c.execute(
         `CREATE TABLE IF NOT EXISTS schema_meta (
           key TEXT PRIMARY KEY,
           value INTEGER NOT NULL
         )`,
-      );
-
-      const ver = await c.execute({
-        sql: "SELECT value FROM schema_meta WHERE key = 'posts_version'",
-        args: [],
-      });
-      const current = (ver.rows[0]?.value as number | undefined) ?? 0;
-
+      ];
       if (current < SCHEMA_VERSION) {
-        await c.execute("DROP TABLE IF EXISTS reactions");
-        await c.execute("DROP TABLE IF EXISTS posts");
+        stmts.push("DROP TABLE IF EXISTS reactions", "DROP TABLE IF EXISTS posts");
       }
-
-      await c.execute(
+      stmts.push(
         `CREATE TABLE IF NOT EXISTS posts (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -90,12 +91,9 @@ async function ensureInit(): Promise<void> {
           pnl_pct REAL NOT NULL,
           created_at INTEGER NOT NULL
         )`,
-      );
-      await c.execute(`CREATE INDEX IF NOT EXISTS idx_posts_created ON posts(created_at DESC)`);
-      await c.execute(`CREATE INDEX IF NOT EXISTS idx_posts_user ON posts(user_id)`);
-      await c.execute(`CREATE INDEX IF NOT EXISTS idx_posts_ticker ON posts(ticker_code)`);
-
-      await c.execute(
+        `CREATE INDEX IF NOT EXISTS idx_posts_created ON posts(created_at DESC)`,
+        `CREATE INDEX IF NOT EXISTS idx_posts_user ON posts(user_id)`,
+        `CREATE INDEX IF NOT EXISTS idx_posts_ticker ON posts(ticker_code)`,
         `CREATE TABLE IF NOT EXISTS reactions (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
@@ -104,8 +102,10 @@ async function ensureInit(): Promise<void> {
           created_at INTEGER NOT NULL,
           UNIQUE(post_id, user_id, kind)
         )`,
+        `CREATE INDEX IF NOT EXISTS idx_reactions_post ON reactions(post_id)`,
       );
-      await c.execute(`CREATE INDEX IF NOT EXISTS idx_reactions_post ON reactions(post_id)`);
+
+      await c.batch(stmts, "deferred");
 
       if (current < SCHEMA_VERSION) {
         await c.execute({
