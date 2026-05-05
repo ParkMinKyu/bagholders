@@ -1,6 +1,11 @@
 "use server";
 
 import { getCurrentUser } from "./auth";
+import {
+  addBoardComment,
+  voteBoardPost,
+  type VoteKind,
+} from "./board";
 import { addComment } from "./comments";
 import { dbGet, dbRun } from "./db";
 import { addGuestbookEntry } from "./guestbook";
@@ -100,6 +105,73 @@ export async function addGuestbookAction(
       id: r.id,
       author_username: user.username,
       body: trimmed.slice(0, GUESTBOOK_MAX_LEN),
+      created_at: Date.now(),
+    },
+  };
+}
+
+// ───── 갤러리(자유 게시판) ─────
+
+export type BoardVoteResult =
+  | { ok: true; upvotes: number; downvotes: number; my: VoteKind | null }
+  | { ok: false; error: string };
+
+export async function voteBoardPostAction(
+  postId: number,
+  kind: VoteKind,
+): Promise<BoardVoteResult> {
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "로그인이 필요합니다." };
+  if (!Number.isFinite(postId)) return { ok: false, error: "잘못된 글입니다." };
+  if (kind !== "up" && kind !== "down") return { ok: false, error: "잘못된 투표입니다." };
+  const r = await voteBoardPost(postId, user.id, kind);
+  if (!r) return { ok: false, error: "글이 없습니다." };
+  return { ok: true, upvotes: r.upvotes, downvotes: r.downvotes, my: r.my };
+}
+
+const BOARD_COMMENT_MAX_LEN = 500;
+const BOARD_NICK_MAX_LEN = 16;
+
+export type BoardCommentDTO = {
+  id: number;
+  display_name: string;
+  is_anon: boolean;
+  body: string;
+  created_at: number;
+};
+
+export type BoardCommentResult =
+  | { ok: true; comment: BoardCommentDTO }
+  | { ok: false; error: string };
+
+export async function addBoardCommentAction(
+  postId: number,
+  body: string,
+  anonNickname: string | null,
+): Promise<BoardCommentResult> {
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "로그인이 필요합니다." };
+  if (!Number.isFinite(postId)) return { ok: false, error: "잘못된 글입니다." };
+  const trimmed = body.trim();
+  if (!trimmed) return { ok: false, error: "내용을 입력해주세요." };
+  const anon =
+    anonNickname && anonNickname.trim().length > 0
+      ? anonNickname.trim().slice(0, BOARD_NICK_MAX_LEN)
+      : null;
+  const r = await addBoardComment({
+    postId,
+    userId: user.id,
+    body: trimmed,
+    anonNickname: anon,
+  });
+  if (!r) return { ok: false, error: "내용을 입력해주세요." };
+  return {
+    ok: true,
+    comment: {
+      id: r.id,
+      display_name: anon ?? user.username,
+      is_anon: !!anon,
+      body: trimmed.slice(0, BOARD_COMMENT_MAX_LEN),
       created_at: Date.now(),
     },
   };

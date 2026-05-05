@@ -1,4 +1,6 @@
 import { createClient, type Client, type InValue } from "@libsql/client";
+
+export type { InValue };
 import path from "node:path";
 import fs from "node:fs";
 
@@ -31,7 +33,7 @@ function getClient(): Client {
   return global.__bagDbClient;
 }
 
-const SCHEMA_VERSION = 8;
+const SCHEMA_VERSION = 9;
 
 async function ensureInit(): Promise<void> {
   if (!global.__bagDbInit) {
@@ -150,6 +152,38 @@ async function ensureInit(): Promise<void> {
         )`,
         `CREATE INDEX IF NOT EXISTS idx_guestbook_owner ON guestbook_entries(owner_id, created_at DESC)`,
         `CREATE INDEX IF NOT EXISTS idx_guestbook_author ON guestbook_entries(author_id)`,
+        // v9: 갤러리(자유 게시판). 익명 닉네임 컬럼 포함, vote count는 denormalize.
+        `CREATE TABLE IF NOT EXISTS board_posts (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+          anon_nickname TEXT,
+          category TEXT NOT NULL,
+          title TEXT NOT NULL,
+          body TEXT NOT NULL,
+          image_url TEXT,
+          upvotes INTEGER NOT NULL DEFAULT 0,
+          downvotes INTEGER NOT NULL DEFAULT 0,
+          created_at INTEGER NOT NULL
+        )`,
+        `CREATE INDEX IF NOT EXISTS idx_board_created ON board_posts(created_at DESC)`,
+        `CREATE INDEX IF NOT EXISTS idx_board_category ON board_posts(category, created_at DESC)`,
+        `CREATE INDEX IF NOT EXISTS idx_board_score ON board_posts(upvotes DESC, created_at DESC)`,
+        `CREATE TABLE IF NOT EXISTS board_votes (
+          post_id INTEGER NOT NULL REFERENCES board_posts(id) ON DELETE CASCADE,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          kind TEXT NOT NULL,
+          created_at INTEGER NOT NULL,
+          PRIMARY KEY (post_id, user_id)
+        )`,
+        `CREATE TABLE IF NOT EXISTS board_comments (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          post_id INTEGER NOT NULL REFERENCES board_posts(id) ON DELETE CASCADE,
+          user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+          anon_nickname TEXT,
+          body TEXT NOT NULL,
+          created_at INTEGER NOT NULL
+        )`,
+        `CREATE INDEX IF NOT EXISTS idx_board_comments_post ON board_comments(post_id, created_at ASC)`,
       );
 
       await c.batch(stmts, "deferred");

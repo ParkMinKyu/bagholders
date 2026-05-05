@@ -37,6 +37,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <nav className="flex items-center gap-1.5 text-xs sm:text-sm flex-shrink-0">
               <Link href="/" prefetch={false} className="hover:text-bag-accent">피드</Link>
               <span className="text-bag-mute">·</span>
+              <Link href="/b" prefetch={false} className="hover:text-bag-accent">갤러리</Link>
+              <span className="text-bag-mute">·</span>
               <Link href="/ranking" prefetch={false} className="hover:text-bag-accent">랭킹</Link>
               {user ? (
                 <>
