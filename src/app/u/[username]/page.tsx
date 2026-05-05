@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import {
@@ -6,6 +7,7 @@ import {
   getUserByUsername,
   listUserPosts,
 } from "@/lib/posts";
+import { getFollowCounts, isFollowing } from "@/lib/follows";
 import { PostCard } from "@/components/PostCard";
 import { TickerSummary } from "@/components/TickerSummary";
 import { damageEquivalent, fmtKRWShort, pctHumor } from "@/lib/format";
@@ -26,7 +28,12 @@ export default async function ProfilePage({
   ]);
   if (!target) notFound();
 
-  const posts = await listUserPosts(target.id, viewer?.id ?? null);
+  const isSelf = !!viewer && viewer.id === target.id;
+  const [posts, followCounts, viewerFollowsTarget] = await Promise.all([
+    listUserPosts(target.id, viewer?.id ?? null),
+    getFollowCounts(target.id),
+    viewer && !isSelf ? isFollowing(viewer.id, target.id) : Promise.resolve(false),
+  ]);
 
   const total = posts.length;
   const scores = posts.map((p) => badnessScore(p.kind, Number(p.pnl_pct)));
@@ -63,19 +70,61 @@ export default async function ProfilePage({
   return (
     <div className="space-y-4">
       <section className="panel p-5">
-        <div className="flex items-baseline gap-2 flex-wrap">
-          <h1 className="text-2xl font-black">@{target.username}</h1>
-          <span className="text-sm font-bold text-bag-gold">
-            {title.emoji} {title.text}
-          </span>
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div className="flex items-baseline gap-2 flex-wrap min-w-0">
+            <h1 className="text-2xl font-black truncate">@{target.username}</h1>
+            <span className="text-sm font-bold text-bag-gold">
+              {title.emoji} {title.text}
+            </span>
+          </div>
+          {viewer && !isSelf && (
+            <form action="/api/follow" method="post" className="flex-shrink-0">
+              <input type="hidden" name="username" value={target.username} />
+              <input
+                type="hidden"
+                name="action"
+                value={viewerFollowsTarget ? "unfollow" : "follow"}
+              />
+              <button
+                type="submit"
+                className={
+                  viewerFollowsTarget
+                    ? "btn !py-1 !px-3 text-xs"
+                    : "btn-primary !py-1 !px-3 text-xs"
+                }
+              >
+                {viewerFollowsTarget ? "✓ 팔로잉" : "+ 팔로우"}
+              </button>
+            </form>
+          )}
         </div>
+
         <p className="text-bag-mute text-sm mt-1">
           {title.sub
             ? title.sub
-            : viewer?.id === target.id
+            : isSelf
               ? "당신의 손실 자서전입니다."
               : "이 사람이 사는 코인, 잠시 관망을 추천합니다."}
         </p>
+
+        <div className="mt-3 flex gap-4 text-sm">
+          <Link
+            href={`/u/${target.username}/followers`}
+            prefetch={false}
+            className="hover:text-bag-accent"
+          >
+            <span className="font-bold">{followCounts.followers}</span>
+            <span className="text-bag-mute ml-1">팔로워</span>
+          </Link>
+          <Link
+            href={`/u/${target.username}/following`}
+            prefetch={false}
+            className="hover:text-bag-accent"
+          >
+            <span className="font-bold">{followCounts.following}</span>
+            <span className="text-bag-mute ml-1">팔로잉</span>
+          </Link>
+        </div>
 
         <div className="mt-4 grid grid-cols-3 gap-3 text-center">
           <Stat

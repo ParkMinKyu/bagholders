@@ -31,7 +31,7 @@ function getClient(): Client {
   return global.__bagDbClient;
 }
 
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 
 async function ensureInit(): Promise<void> {
   if (!global.__bagDbInit) {
@@ -71,7 +71,8 @@ async function ensureInit(): Promise<void> {
           value INTEGER NOT NULL
         )`,
       ];
-      if (current < SCHEMA_VERSION) {
+      // 레거시 posts/reactions 스키마(v1, v2)에서만 재생성 — v3 이후는 데이터 보존.
+      if (current > 0 && current < 3) {
         stmts.push("DROP TABLE IF EXISTS reactions", "DROP TABLE IF EXISTS posts");
       }
       stmts.push(
@@ -103,16 +104,23 @@ async function ensureInit(): Promise<void> {
           UNIQUE(post_id, user_id, kind)
         )`,
         `CREATE INDEX IF NOT EXISTS idx_reactions_post ON reactions(post_id)`,
+        // v4: 팔로우 테이블 (v3 → v4는 순수 추가, 기존 데이터 보존).
+        `CREATE TABLE IF NOT EXISTS follows (
+          follower_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          following_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          created_at INTEGER NOT NULL,
+          PRIMARY KEY (follower_id, following_id)
+        )`,
+        `CREATE INDEX IF NOT EXISTS idx_follows_following ON follows(following_id)`,
+        `CREATE INDEX IF NOT EXISTS idx_follows_follower ON follows(follower_id)`,
       );
 
       await c.batch(stmts, "deferred");
 
-      if (current < SCHEMA_VERSION) {
-        await c.execute({
-          sql: "INSERT OR REPLACE INTO schema_meta (key, value) VALUES ('posts_version', ?)",
-          args: [SCHEMA_VERSION],
-        });
-      }
+      await c.execute({
+        sql: "INSERT OR REPLACE INTO schema_meta (key, value) VALUES ('posts_version', ?)",
+        args: [SCHEMA_VERSION],
+      });
     })();
   }
   await global.__bagDbInit;
@@ -185,5 +193,11 @@ export type ReactionRow = {
   post_id: number;
   user_id: number;
   kind: string;
+  created_at: number;
+};
+
+export type FollowRow = {
+  follower_id: number;
+  following_id: number;
   created_at: number;
 };
