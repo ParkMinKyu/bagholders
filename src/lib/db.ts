@@ -2,12 +2,20 @@ import { createClient, type Client, type InValue } from "@libsql/client";
 import path from "node:path";
 import fs from "node:fs";
 
-const DATA_DIR = path.join(process.cwd(), "data");
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-
-const url =
-  process.env.TURSO_DATABASE_URL ?? `file:${path.join(DATA_DIR, "bagholders.db")}`;
+const tursoUrl = process.env.TURSO_DATABASE_URL;
 const authToken = process.env.TURSO_AUTH_TOKEN;
+
+function resolveLocalUrl(): string {
+  const dir = path.join(process.cwd(), "data");
+  try {
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    return `file:${path.join(dir, "bagholders.db")}`;
+  } catch {
+    return `file:/tmp/bagholders.db`;
+  }
+}
+
+const url = tursoUrl && tursoUrl.length > 0 ? tursoUrl : resolveLocalUrl();
 
 declare global {
   // eslint-disable-next-line no-var
