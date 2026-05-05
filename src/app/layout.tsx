@@ -127,16 +127,29 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         </header>
         <main className="flex-1 mx-auto w-full max-w-3xl px-4 py-6">{children}</main>
         <footer className="border-t border-bag-border text-bag-mute text-xs py-6 px-4">
-          <div className="mx-auto max-w-3xl space-y-1">
+          <div className="mx-auto max-w-3xl space-y-2">
             <p>
-              본 사이트는 <strong>투자 정보를 제공하지 않으며</strong>, 모든 게시물은 사용자가
-              작성한 유머 콘텐츠입니다. 어떠한 게시물도 매매 추천·전망·분석이 아닙니다.
+              본 사이트는 <strong>투자 정보를 제공하지 않으며</strong>, 모든 게시물은
+              사용자가 작성한 유머·자조 콘텐츠입니다. 어떠한 게시물도 매매
+              추천·전망·분석이 아닙니다. 투자 판단의 책임은 본인에게 있습니다.
             </p>
-            <p>
-              가격은 사용자가 직접 입력한 값이며 실제 시세와 다를 수 있습니다. 투자 판단의 책임은
-              본인에게 있습니다.
-            </p>
-            <p className="opacity-70">© {new Date().getFullYear()} bagholders. · for the lulz</p>
+            <nav className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1">
+              <Link href="/terms" prefetch={false} className="hover:text-white">
+                이용약관
+              </Link>
+              <span className="opacity-40">·</span>
+              <Link
+                href="/privacy"
+                prefetch={false}
+                className="hover:text-white font-bold"
+              >
+                개인정보처리방침
+              </Link>
+              <span className="opacity-40">·</span>
+              <span className="opacity-70">
+                © {new Date().getFullYear()} bagholders.
+              </span>
+            </nav>
           </div>
         </footer>
       </body>
