@@ -1,4 +1,4 @@
-import { db, type PostRow, type UserRow } from "./db";
+import { dbAll, dbGet, type PostRow, type UserRow } from "./db";
 
 export const CATEGORIES = ["매수인증", "존버인증", "손절인증", "익절인증"] as const;
 export type Category = (typeof CATEGORIES)[number];
@@ -24,59 +24,62 @@ export type FeedPost = PostRow & {
   my_reactions: string[];
 };
 
-export function listFeed(viewerId: number | null, limit = 50, offset = 0): FeedPost[] {
-  const posts = db
-    .prepare(
-      `SELECT p.*, u.username FROM posts p
-       JOIN users u ON u.id = p.user_id
-       ORDER BY p.created_at DESC
-       LIMIT ? OFFSET ?`,
-    )
-    .all(limit, offset) as (PostRow & { username: string })[];
+export async function listFeed(
+  viewerId: number | null,
+  limit = 50,
+  offset = 0,
+): Promise<FeedPost[]> {
+  const posts = await dbAll<PostRow & { username: string }>(
+    `SELECT p.*, u.username FROM posts p
+     JOIN users u ON u.id = p.user_id
+     ORDER BY p.created_at DESC
+     LIMIT ? OFFSET ?`,
+    [limit, offset],
+  );
   return decoratePosts(posts, viewerId);
 }
 
-export function listUserPosts(userId: number, viewerId: number | null): FeedPost[] {
-  const posts = db
-    .prepare(
-      `SELECT p.*, u.username FROM posts p
-       JOIN users u ON u.id = p.user_id
-       WHERE p.user_id = ?
-       ORDER BY p.created_at DESC`,
-    )
-    .all(userId) as (PostRow & { username: string })[];
+export async function listUserPosts(
+  userId: number,
+  viewerId: number | null,
+): Promise<FeedPost[]> {
+  const posts = await dbAll<PostRow & { username: string }>(
+    `SELECT p.*, u.username FROM posts p
+     JOIN users u ON u.id = p.user_id
+     WHERE p.user_id = ?
+     ORDER BY p.created_at DESC`,
+    [userId],
+  );
   return decoratePosts(posts, viewerId);
 }
 
-function decoratePosts(
+async function decoratePosts(
   posts: (PostRow & { username: string })[],
   viewerId: number | null,
-): FeedPost[] {
+): Promise<FeedPost[]> {
   if (posts.length === 0) return [];
   const ids = posts.map((p) => p.id);
   const placeholders = ids.map(() => "?").join(",");
 
-  const counts = db
-    .prepare(
-      `SELECT post_id, kind, COUNT(*) AS n FROM reactions
-       WHERE post_id IN (${placeholders})
-       GROUP BY post_id, kind`,
-    )
-    .all(...ids) as { post_id: number; kind: string; n: number }[];
+  const counts = await dbAll<{ post_id: number; kind: string; n: number }>(
+    `SELECT post_id, kind, COUNT(*) AS n FROM reactions
+     WHERE post_id IN (${placeholders})
+     GROUP BY post_id, kind`,
+    ids,
+  );
 
   const myReacts = viewerId
-    ? (db
-        .prepare(
-          `SELECT post_id, kind FROM reactions
-           WHERE post_id IN (${placeholders}) AND user_id = ?`,
-        )
-        .all(...ids, viewerId) as { post_id: number; kind: string }[])
+    ? await dbAll<{ post_id: number; kind: string }>(
+        `SELECT post_id, kind FROM reactions
+         WHERE post_id IN (${placeholders}) AND user_id = ?`,
+        [...ids, viewerId],
+      )
     : [];
 
   const countMap = new Map<number, Record<string, number>>();
   for (const r of counts) {
     if (!countMap.has(r.post_id)) countMap.set(r.post_id, {});
-    countMap.get(r.post_id)![r.kind] = r.n;
+    countMap.get(r.post_id)![r.kind] = Number(r.n);
   }
   const myMap = new Map<number, string[]>();
   for (const r of myReacts) {
@@ -99,26 +102,23 @@ export type RankingRow = {
   worst_loss: number;
 };
 
-export function getRanking(limit = 50): RankingRow[] {
-  return db
-    .prepare(
-      `SELECT u.id AS user_id, u.username,
-              COUNT(p.id) AS post_count,
-              AVG(p.pnl_pct) AS avg_loss,
-              MIN(p.pnl_pct) AS worst_loss
-       FROM users u
-       JOIN posts p ON p.user_id = u.id
-       GROUP BY u.id
-       HAVING COUNT(p.id) >= 1
-       ORDER BY avg_loss ASC
-       LIMIT ?`,
-    )
-    .all(limit) as RankingRow[];
+export async function getRanking(limit = 50): Promise<RankingRow[]> {
+  return dbAll<RankingRow>(
+    `SELECT u.id AS user_id, u.username,
+            COUNT(p.id) AS post_count,
+            AVG(p.pnl_pct) AS avg_loss,
+            MIN(p.pnl_pct) AS worst_loss
+     FROM users u
+     JOIN posts p ON p.user_id = u.id
+     GROUP BY u.id
+     HAVING COUNT(p.id) >= 1
+     ORDER BY avg_loss ASC
+     LIMIT ?`,
+    [limit],
+  );
 }
 
-export function getUserByUsername(username: string): UserRow | null {
-  const row = db.prepare("SELECT * FROM users WHERE username = ?").get(username) as
-    | UserRow
-    | undefined;
+export async function getUserByUsername(username: string): Promise<UserRow | null> {
+  const row = await dbGet<UserRow>("SELECT * FROM users WHERE username = ?", [username]);
   return row ?? null;
 }

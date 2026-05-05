@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { db } from "@/lib/db";
+import { dbGet, dbRun } from "@/lib/db";
 import { REACTIONS } from "@/lib/posts";
 
 export async function POST(req: Request) {
@@ -17,20 +17,21 @@ export async function POST(req: Request) {
     return NextResponse.redirect(referer, { status: 303 });
   }
 
-  const exists = db
-    .prepare("SELECT id FROM reactions WHERE post_id = ? AND user_id = ? AND kind = ?")
-    .get(postId, user.id, kind);
+  const exists = await dbGet<{ id: number }>(
+    "SELECT id FROM reactions WHERE post_id = ? AND user_id = ? AND kind = ?",
+    [postId, user.id, kind],
+  );
 
   if (exists) {
-    db.prepare("DELETE FROM reactions WHERE post_id = ? AND user_id = ? AND kind = ?").run(
-      postId,
-      user.id,
-      kind,
+    await dbRun(
+      "DELETE FROM reactions WHERE post_id = ? AND user_id = ? AND kind = ?",
+      [postId, user.id, kind],
     );
   } else {
-    db.prepare(
+    await dbRun(
       "INSERT INTO reactions (post_id, user_id, kind, created_at) VALUES (?, ?, ?, ?)",
-    ).run(postId, user.id, kind, Date.now());
+      [postId, user.id, kind, Date.now()],
+    );
   }
 
   return NextResponse.redirect(referer, { status: 303 });

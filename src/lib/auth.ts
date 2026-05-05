@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
-import { db, type UserRow } from "./db";
+import { dbGet, dbRun, type UserRow } from "./db";
 
 const COOKIE_NAME = "bag_session";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
@@ -14,18 +14,19 @@ export async function verifyPassword(plain: string, hash: string) {
   return bcrypt.compare(plain, hash);
 }
 
-export function createSession(userId: number) {
+export async function createSession(userId: number) {
   const token = crypto.randomBytes(32).toString("hex");
   const now = Date.now();
   const expiresAt = now + SESSION_TTL_MS;
-  db.prepare(
+  await dbRun(
     "INSERT INTO sessions (token, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)",
-  ).run(token, userId, now, expiresAt);
+    [token, userId, now, expiresAt],
+  );
   return { token, expiresAt };
 }
 
-export function destroySession(token: string) {
-  db.prepare("DELETE FROM sessions WHERE token = ?").run(token);
+export async function destroySession(token: string) {
+  await dbRun("DELETE FROM sessions WHERE token = ?", [token]);
 }
 
 export async function setSessionCookie(token: string, expiresAt: number) {
@@ -49,13 +50,12 @@ export async function getCurrentUser(): Promise<UserRow | null> {
   const token = c.get(COOKIE_NAME)?.value;
   if (!token) return null;
 
-  const row = db
-    .prepare(
-      `SELECT u.* FROM sessions s
-       JOIN users u ON u.id = s.user_id
-       WHERE s.token = ? AND s.expires_at > ?`,
-    )
-    .get(token, Date.now()) as UserRow | undefined;
+  const row = await dbGet<UserRow>(
+    `SELECT u.* FROM sessions s
+     JOIN users u ON u.id = s.user_id
+     WHERE s.token = ? AND s.expires_at > ?`,
+    [token, Date.now()],
+  );
   return row ?? null;
 }
 

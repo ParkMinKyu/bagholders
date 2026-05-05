@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { db } from "@/lib/db";
+import { dbRun } from "@/lib/db";
 import { CATEGORIES, calcPnlPct } from "@/lib/posts";
 
 export async function POST(req: Request) {
@@ -34,20 +34,21 @@ export async function POST(req: Request) {
 
   const pnl = calcPnlPct(buyPrice, currentPrice);
 
-  db.prepare(
+  await dbRun(
     `INSERT INTO posts
       (user_id, category, ticker, buy_price, current_price, quantity, comment, pnl_pct, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-  ).run(
-    user.id,
-    category,
-    ticker,
-    buyPrice,
-    currentPrice,
-    quantity,
-    comment,
-    pnl,
-    Date.now(),
+    [
+      user.id,
+      category,
+      ticker,
+      buyPrice,
+      currentPrice,
+      quantity,
+      comment,
+      pnl,
+      Date.now(),
+    ],
   );
 
   return NextResponse.redirect(new URL("/", req.url), { status: 303 });

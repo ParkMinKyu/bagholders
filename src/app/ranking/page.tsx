@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 const MEDALS = ["🥇", "🥈", "🥉"];
 
 export default async function RankingPage() {
-  const rows = getRanking(50);
+  const rows = await getRanking(50);
   return (
     <div className="space-y-4">
       <section className="panel p-5">
@@ -34,7 +34,7 @@ export default async function RankingPage() {
                 인증 {r.post_count}건
               </span>
               <span className="text-xs text-bag-mute hidden sm:inline">
-                최악 {r.worst_loss.toFixed(1)}%
+                최악 {Number(r.worst_loss).toFixed(1)}%
               </span>
               <span
                 className={`font-mono font-black w-24 text-right ${
@@ -46,7 +46,7 @@ export default async function RankingPage() {
                 }`}
               >
                 {r.avg_loss >= 0 ? "+" : ""}
-                {r.avg_loss.toFixed(2)}%
+                {Number(r.avg_loss).toFixed(2)}%
               </span>
             </li>
           ))}

@@ -11,11 +11,11 @@ export default async function ProfilePage({
   params: Promise<{ username: string }>;
 }) {
   const { username } = await params;
-  const target = getUserByUsername(decodeURIComponent(username));
+  const target = await getUserByUsername(decodeURIComponent(username));
   if (!target) notFound();
 
   const viewer = await getCurrentUser();
-  const posts = listUserPosts(target.id, viewer?.id ?? null);
+  const posts = await listUserPosts(target.id, viewer?.id ?? null);
 
   const total = posts.length;
   const avg =
