@@ -124,28 +124,36 @@ async function refreshStale(rows: PostRow[]): Promise<PostRow[]> {
   const prices = await getPrices(tickers);
   if (Object.keys(prices).length === 0) return rows;
 
-  const fresh = new Map<number, PostRow>();
+  // 티커당 한 번씩만 UPDATE (N posts → N tickers, 보통 ~15회)
   await Promise.all(
-    stale.map(async (r) => {
-      const newPrice = prices[r.ticker_code];
-      if (!newPrice || newPrice <= 0) return;
-      const newPnl = calcPnlPct(Number(r.entry_price), newPrice);
-      try {
-        await dbRun(
-          "UPDATE posts SET last_price = ?, last_priced_at = ?, pnl_pct = ? WHERE id = ?",
-          [newPrice, now, newPnl, r.id],
-        );
-      } catch {
-        // ignore write race
-      }
-      fresh.set(r.id, {
-        ...r,
-        last_price: newPrice,
-        last_priced_at: now,
-        pnl_pct: newPnl,
-      });
-    }),
+    Object.entries(prices).map(([ticker, price]) =>
+      dbRun(
+        `UPDATE posts SET
+           last_price = ?,
+           last_priced_at = ?,
+           pnl_pct = CASE WHEN entry_price > 0
+             THEN ((? - entry_price) / entry_price) * 100
+             ELSE 0
+           END
+         WHERE ticker_code = ? AND last_priced_at < ?`,
+        [price, now, price, ticker, now - 1000],
+      ).catch((e) => {
+        console.warn("[refreshStale] update failed:", e);
+      }),
+    ),
   );
+
+  const fresh = new Map<number, PostRow>();
+  for (const r of stale) {
+    const newPrice = prices[r.ticker_code];
+    if (!newPrice || newPrice <= 0) continue;
+    fresh.set(r.id, {
+      ...r,
+      last_price: newPrice,
+      last_priced_at: now,
+      pnl_pct: calcPnlPct(Number(r.entry_price), newPrice),
+    });
+  }
 
   return rows.map((r) => fresh.get(r.id) ?? r);
 }
@@ -232,50 +240,66 @@ export type RankingRow = {
   badness_worst: number;
 };
 
-export async function getRanking(viewerId: number | null, limit = 50): Promise<RankingRow[]> {
-  // Ensure all posts are reasonably fresh by tagging recent feed
-  const all = await dbAll<PostRow & { username: string }>(
-    `SELECT p.*, u.username FROM posts p
-     JOIN users u ON u.id = p.user_id`,
-    [],
+async function refreshAllStaleTickers(): Promise<void> {
+  const now = Date.now();
+  const stale = await dbAll<{ ticker_code: string }>(
+    `SELECT DISTINCT ticker_code FROM posts WHERE last_priced_at < ?`,
+    [now - PRICE_STALE_MS],
   );
-  if (all.length === 0) return [];
-  const refreshed = await refreshStale(all);
+  if (stale.length === 0) return;
+  const tickers = stale.map((r) => r.ticker_code);
+  const prices = await getPrices(tickers);
+  if (Object.keys(prices).length === 0) return;
+  await Promise.all(
+    Object.entries(prices).map(([ticker, price]) =>
+      dbRun(
+        `UPDATE posts SET
+           last_price = ?,
+           last_priced_at = ?,
+           pnl_pct = CASE WHEN entry_price > 0
+             THEN ((? - entry_price) / entry_price) * 100
+             ELSE 0
+           END
+         WHERE ticker_code = ? AND last_priced_at < ?`,
+        [price, now, price, ticker, now - 1000],
+      ).catch((e) => {
+        console.warn("[refreshAllStaleTickers] update failed:", e);
+      }),
+    ),
+  );
+}
 
-  // Aggregate per-user badness (signed: +badness for buy_high losses and sell_low gains)
-  const byUser = new Map<
-    number,
-    { username: string; scores: number[] }
-  >();
-  for (const p of refreshed) {
-    const score = badnessScore(p.kind, Number(p.pnl_pct));
-    const existing = byUser.get(p.user_id);
-    if (existing) {
-      existing.scores.push(score);
-    } else {
-      byUser.set(p.user_id, {
-        username: (p as PostRow & { username: string }).username,
-        scores: [score],
-      });
-    }
-  }
-
-  const rows: RankingRow[] = [];
-  for (const [user_id, { username, scores }] of byUser) {
-    const avg = scores.reduce((s, n) => s + n, 0) / scores.length;
-    const worst = Math.max(...scores);
-    rows.push({
-      user_id,
-      username,
-      post_count: scores.length,
-      badness_avg: avg,
-      badness_worst: worst,
-    });
-  }
-  rows.sort((a, b) => b.badness_avg - a.badness_avg);
-  // Mark viewer for highlight if needed (caller can check via id)
+export async function getRanking(viewerId: number | null, limit = 50): Promise<RankingRow[]> {
+  await refreshAllStaleTickers();
+  const rows = await dbAll<{
+    user_id: number;
+    username: string;
+    post_count: number;
+    badness_avg: number;
+    badness_worst: number;
+  }>(
+    `SELECT
+       u.id AS user_id,
+       u.username AS username,
+       COUNT(p.id) AS post_count,
+       AVG(CASE WHEN p.kind = 'buy_high' THEN -p.pnl_pct ELSE p.pnl_pct END) AS badness_avg,
+       MAX(CASE WHEN p.kind = 'buy_high' THEN -p.pnl_pct ELSE p.pnl_pct END) AS badness_worst
+     FROM users u
+     JOIN posts p ON p.user_id = u.id
+     GROUP BY u.id, u.username
+     HAVING COUNT(p.id) >= 1
+     ORDER BY badness_avg DESC
+     LIMIT ?`,
+    [limit],
+  );
   void viewerId;
-  return rows.slice(0, limit);
+  return rows.map((r) => ({
+    user_id: Number(r.user_id),
+    username: r.username,
+    post_count: Number(r.post_count),
+    badness_avg: Number(r.badness_avg),
+    badness_worst: Number(r.badness_worst),
+  }));
 }
 
 export async function getUserByUsername(username: string): Promise<UserRow | null> {
