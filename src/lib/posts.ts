@@ -18,6 +18,7 @@ export type FeedPost = PostRow & {
   my_reactions: string[];
   badness: number;
   comment_count: number;
+  author_follower_count: number;
 };
 
 export type TickerStat = {
@@ -168,8 +169,12 @@ async function decoratePosts(
   const ids = refreshed.map((p) => p.id);
   const placeholders = ids.map(() => "?").join(",");
 
-  // 세 쿼리 병렬 실행 (libsql 클라이언트는 동시 execute 지원).
-  const [counts, myReacts, commentCounts] = await Promise.all([
+  // 작성자 user_id 유니크 셋 (팔로워 수 집계용).
+  const userIds = Array.from(new Set(refreshed.map((p) => p.user_id)));
+  const userPlaceholders = userIds.map(() => "?").join(",");
+
+  // 네 쿼리 병렬 실행 (libsql 클라이언트는 동시 execute 지원).
+  const [counts, myReacts, commentCounts, followerCounts] = await Promise.all([
     dbAll<{ post_id: number; kind: string; n: number }>(
       `SELECT post_id, kind, COUNT(*) AS n FROM reactions
        WHERE post_id IN (${placeholders})
@@ -189,10 +194,21 @@ async function decoratePosts(
        GROUP BY post_id`,
       ids,
     ),
+    userIds.length > 0
+      ? dbAll<{ user_id: number; n: number }>(
+          `SELECT following_id AS user_id, COUNT(*) AS n FROM follows
+           WHERE following_id IN (${userPlaceholders})
+           GROUP BY following_id`,
+          userIds,
+        )
+      : Promise.resolve([] as { user_id: number; n: number }[]),
   ]);
 
   const commentMap = new Map<number, number>();
   for (const r of commentCounts) commentMap.set(Number(r.post_id), Number(r.n));
+
+  const followerMap = new Map<number, number>();
+  for (const r of followerCounts) followerMap.set(Number(r.user_id), Number(r.n));
 
   const countMap = new Map<number, Record<string, number>>();
   for (const r of counts) {
@@ -211,6 +227,7 @@ async function decoratePosts(
     my_reactions: myMap.get(p.id) ?? [],
     badness: badnessScore(p.kind, Number(p.pnl_pct)),
     comment_count: commentMap.get(p.id) ?? 0,
+    author_follower_count: followerMap.get(p.user_id) ?? 0,
   }));
 }
 

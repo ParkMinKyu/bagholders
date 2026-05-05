@@ -60,16 +60,26 @@ export function PostCard({
   return (
     <article className={`panel p-4 space-y-3 border-l-4 ${accentBorder}`}>
       <header className="flex items-center justify-between text-sm">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           <Link
             href={`/u/${post.username}`}
             prefetch={false}
-            className="font-bold hover:text-bag-accent"
+            className="font-bold hover:text-bag-accent truncate"
           >
             {post.username}
           </Link>
+          {post.author_follower_count > 0 && (
+            <Link
+              href={`/u/${post.username}/followers`}
+              prefetch={false}
+              title={`${post.author_follower_count}명의 팔로워`}
+              className="text-[11px] text-bag-mute hover:text-bag-accent flex-shrink-0"
+            >
+              팔로워 <span className="font-mono">{post.author_follower_count}</span>
+            </Link>
+          )}
           <span
-            className={`badge ${
+            className={`badge flex-shrink-0 ${
               isBuyHigh
                 ? "border-bag-accent/40 text-bag-accent"
                 : "border-sky-400/40 text-sky-300"
@@ -78,7 +88,7 @@ export function PostCard({
             {isBuyHigh ? "🤡 고점매수" : "😭 저점매도"}
           </span>
         </div>
-        <span className="text-bag-mute text-xs">{fmtTime(Number(post.created_at))}</span>
+        <span className="text-bag-mute text-xs flex-shrink-0">{fmtTime(Number(post.created_at))}</span>
       </header>
 
       <div>

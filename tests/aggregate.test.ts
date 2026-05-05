@@ -37,6 +37,7 @@ function makePost(overrides: Partial<FeedPost> = {}): FeedPost {
     my_reactions: [],
     badness: 50,
     comment_count: 0,
+    author_follower_count: 0,
     ...overrides,
   };
 }
