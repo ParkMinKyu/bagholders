@@ -101,16 +101,62 @@ export default function PrivacyPage() {
         </p>
       </Section>
 
-      <Section title="9. 방침 변경">
+      <Section title="9. 개인정보 보호책임자">
+        <p>
+          이용자의 개인정보를 보호하고 개인정보와 관련한 불만을 처리하기 위하여
+          아래와 같이 개인정보 보호책임자를 지정하고 있습니다.
+        </p>
+        <ul>
+          <li>책임자: 운영자 (Owner)</li>
+          <li>
+            연락처:{" "}
+            <a
+              href="mailto:smartmingue@gmail.com"
+              className="text-bag-accent hover:underline"
+            >
+              smartmingue@gmail.com
+            </a>
+          </li>
+        </ul>
+      </Section>
+
+      <Section title="10. 회원 탈퇴 및 정보 파기">
+        <p>
+          회원은 프로필 페이지의 회원 탈퇴 버튼을 통해 언제든 직접 탈퇴할 수
+          있습니다. 탈퇴 시 계정과 함께 작성한 게시물·댓글·리액션·팔로우 관계 등
+          관련 정보가 즉시 파기되며, 일부 콘텐츠(예: 다른 사용자의 게시물에 단
+          댓글)는 정책에 따라 익명 처리되거나 삭제됩니다. 단, 관련 법령에 따라
+          일정 기간 보관해야 하는 정보는 그 기간 동안 안전하게 분리 보관됩니다.
+        </p>
+      </Section>
+
+      <Section title="11. 방침 변경">
         <p>
           본 방침은 법령·서비스 변경에 따라 개정될 수 있습니다. 변경 시 본 페이지
           상단에 공지합니다.
         </p>
       </Section>
 
-      <Section title="10. 문의처">
+      <Section title="12. 문의처">
         <p>
-          개인정보 관련 문의는 본 사이트의 운영자에게 해주시기 바랍니다.
+          개인정보 관련 문의·요청·신고는 아래로 연락 주시기 바랍니다.
+        </p>
+        <ul>
+          <li>
+            이메일:{" "}
+            <a
+              href="mailto:smartmingue@gmail.com"
+              className="text-bag-accent hover:underline"
+            >
+              smartmingue@gmail.com
+            </a>
+          </li>
+        </ul>
+        <p className="mt-2">
+          또한 한국인터넷진흥원(KISA) 개인정보침해신고센터(privacy.kisa.or.kr,
+          국번없이 118), 대검찰청 사이버수사과(www.spo.go.kr, 국번없이 1301),
+          경찰청 사이버수사국(ecrm.cyber.go.kr, 국번없이 182)에 신고할 수
+          있습니다.
         </p>
       </Section>
 

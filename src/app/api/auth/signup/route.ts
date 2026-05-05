@@ -11,6 +11,9 @@ export async function POST(req: Request) {
   const form = await req.formData();
   const username = String(form.get("username") ?? "").trim();
   const password = String(form.get("password") ?? "");
+  const agreeTerms = String(form.get("agree_terms") ?? "") === "on";
+  const agreePrivacy = String(form.get("agree_privacy") ?? "") === "on";
+  const ageOk = String(form.get("age_ok") ?? "") === "on";
 
   const back = (error: string) => {
     const url = new URL("/signup", req.url);
@@ -24,6 +27,9 @@ export async function POST(req: Request) {
   if (password.length < 6) {
     return back("비밀번호는 6자 이상이어야 합니다.");
   }
+  if (!agreeTerms) return back("이용약관에 동의해주세요.");
+  if (!agreePrivacy) return back("개인정보처리방침에 동의해주세요.");
+  if (!ageOk) return back("만 14세 이상만 가입할 수 있습니다.");
 
   const existing = await dbGet<{ id: number }>("SELECT id FROM users WHERE username = ?", [
     username,

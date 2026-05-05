@@ -308,6 +308,17 @@ export default async function ProfilePage({
         </>
       )}
 
+      {isSelf && (
+        <div className="text-center pt-4">
+          <Link
+            href="/account/withdraw"
+            prefetch={false}
+            className="text-[11px] text-bag-mute hover:text-bag-accent opacity-70"
+          >
+            회원 탈퇴
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

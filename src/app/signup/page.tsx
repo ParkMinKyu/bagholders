@@ -33,6 +33,57 @@ export default async function SignupPage({
             autoComplete="new-password"
           />
         </div>
+
+        <div className="rounded-md border border-bag-border bg-black/20 p-3 space-y-2 text-sm">
+          <label className="flex items-start gap-2">
+            <input
+              type="checkbox"
+              name="agree_terms"
+              required
+              className="accent-bag-accent mt-0.5"
+            />
+            <span>
+              <Link
+                href="/terms"
+                target="_blank"
+                rel="noopener"
+                className="underline hover:text-bag-accent"
+              >
+                이용약관
+              </Link>
+              에 동의합니다 (필수)
+            </span>
+          </label>
+          <label className="flex items-start gap-2">
+            <input
+              type="checkbox"
+              name="agree_privacy"
+              required
+              className="accent-bag-accent mt-0.5"
+            />
+            <span>
+              <Link
+                href="/privacy"
+                target="_blank"
+                rel="noopener"
+                className="underline hover:text-bag-accent"
+              >
+                개인정보처리방침
+              </Link>
+              에 동의합니다 (필수)
+            </span>
+          </label>
+          <label className="flex items-start gap-2">
+            <input
+              type="checkbox"
+              name="age_ok"
+              required
+              className="accent-bag-accent mt-0.5"
+            />
+            <span>만 14세 이상입니다 (필수)</span>
+          </label>
+        </div>
+
         <button className="btn-primary w-full" type="submit">
           가입하고 손실 인증하러 가기
         </button>
