@@ -55,3 +55,21 @@ export function damageEquivalent(krw: number): string | null {
   }
   return `강남 아파트 ${(abs / 2_500_000_000).toFixed(1)}채`;
 }
+
+// 평균 망함률(displayPnl, 음수=망함, 양수=이익)에 따른 유머 멘트.
+export function pctHumor(displayPnl: number): string | null {
+  const v = displayPnl;
+  if (v <= -200) return "이 정도면 포기하자";
+  if (v <= -100) return "팔자마자 떡상의 정석";
+  if (v <= -80) return "거의 상폐 자격증";
+  if (v <= -50) return "반토막+α 이불킥";
+  if (v <= -30) return "삼가 고인의";
+  if (v <= -10) return "물렸음, 정신 데미지";
+  if (v < 0) return "약손해";
+  if (v === 0) return "본전... 정말?";
+  if (v >= 100) return "이거 진짜 너 맞음?";
+  if (v >= 50) return "수상하게 잘 맞힘";
+  if (v >= 20) return "운빨 오졌다";
+  if (v > 0) return "약이익";
+  return null;
+}

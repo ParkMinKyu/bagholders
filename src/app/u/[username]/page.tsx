@@ -8,7 +8,7 @@ import {
 } from "@/lib/posts";
 import { PostCard } from "@/components/PostCard";
 import { TickerSummary } from "@/components/TickerSummary";
-import { damageEquivalent, fmtKRWShort } from "@/lib/format";
+import { damageEquivalent, fmtKRWShort, pctHumor } from "@/lib/format";
 import { getProfileTitle } from "@/lib/title";
 
 export const dynamic = "force-dynamic";
@@ -92,34 +92,60 @@ export default async function ProfilePage({
           />
         </div>
 
-        {hasDamage && (
+        {total > 0 && (
           <div className="mt-4 rounded-md border border-bag-border bg-black/40 p-3 flex items-baseline justify-between">
             <div>
               <div className="text-[11px] text-bag-mute uppercase tracking-wide">
                 💀 통장 누적 데미지
               </div>
               <div className="text-[10px] text-bag-mute opacity-70 mt-0.5">
-                평가손익 + 기회손익 합산 (자조 점수)
+                {hasDamage
+                  ? "평가손익 + 기회손익 합산 (자조 점수)"
+                  : "수량 모름 — 정신 데미지 평균만 측정"}
               </div>
             </div>
             <div className="text-right">
-              <div
-                className={`text-2xl font-black font-mono ${
-                  totalDamageKRW < 0
-                    ? "text-red-400"
-                    : totalDamageKRW > 0
-                      ? "text-emerald-400"
-                      : "text-bag-mute"
-                }`}
-              >
-                {totalDamageKRW >= 0 ? "+" : "-"}
-                {fmtKRWShort(Math.abs(totalDamageKRW))}
-              </div>
-              {damageEquivalent(totalDamageKRW) && (
-                <div className="text-[11px] text-bag-mute mt-0.5">
-                  ≈ {damageEquivalent(totalDamageKRW)}{" "}
-                  {totalDamageKRW < 0 ? "날렸음" : "운빨로 벌었음"}
-                </div>
+              {hasDamage ? (
+                <>
+                  <div
+                    className={`text-2xl font-black font-mono ${
+                      totalDamageKRW < 0
+                        ? "text-red-400"
+                        : totalDamageKRW > 0
+                          ? "text-emerald-400"
+                          : "text-bag-mute"
+                    }`}
+                  >
+                    {totalDamageKRW >= 0 ? "+" : "-"}
+                    {fmtKRWShort(Math.abs(totalDamageKRW))}
+                  </div>
+                  {damageEquivalent(totalDamageKRW) && (
+                    <div className="text-[11px] text-bag-mute mt-0.5">
+                      ≈ {damageEquivalent(totalDamageKRW)}{" "}
+                      {totalDamageKRW < 0 ? "날렸음" : "운빨로 벌었음"}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div
+                    className={`text-2xl font-black font-mono ${
+                      -avg < 0
+                        ? "text-red-400"
+                        : -avg > 0
+                          ? "text-emerald-400"
+                          : "text-bag-mute"
+                    }`}
+                  >
+                    {-avg >= 0 ? "+" : ""}
+                    {(-avg).toFixed(1)}%
+                  </div>
+                  {pctHumor(-avg) && (
+                    <div className="text-[11px] text-bag-mute mt-0.5">
+                      ≈ {pctHumor(-avg)}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>

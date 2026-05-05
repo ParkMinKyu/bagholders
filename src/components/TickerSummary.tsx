@@ -1,5 +1,11 @@
 import type { TickerStat, TickerSideStat } from "@/lib/posts";
-import { damageEquivalent, fmtKRW, fmtKRWShort, fmtTime } from "@/lib/format";
+import {
+  damageEquivalent,
+  fmtKRW,
+  fmtKRWShort,
+  fmtTime,
+  pctHumor,
+} from "@/lib/format";
 
 function pnlColor(n: number) {
   if (n <= -50) return "text-red-500";
@@ -54,18 +60,33 @@ function TickerRow({ stat }: { stat: TickerStat }) {
         <SideRow label="😭 매도" tone="sell" side={stat.sell} />
       )}
 
-      {stat.has_any_qty && <DamageRow krw={stat.net_pnl_krw} />}
+      <DamageRow stat={stat} />
     </div>
   );
 }
 
-function DamageRow({ krw }: { krw: number }) {
+function DamageRow({ stat }: { stat: TickerStat }) {
+  if (stat.has_any_qty) {
+    return <DamageRowKRW krw={stat.net_pnl_krw} />;
+  }
+  // 수량 미입력 — % 기반 정신 데미지
+  const totalSum =
+    stat.buy.count * stat.buy.avg_display_pnl +
+    stat.sell.count * stat.sell.avg_display_pnl;
+  const avg = stat.total_count > 0 ? totalSum / stat.total_count : 0;
+  return <DamageRowPct displayPnl={avg} />;
+}
+
+function DamageRowKRW({ krw }: { krw: number }) {
   const negative = krw < 0;
   const positive = krw > 0;
   const eq = damageEquivalent(krw);
   return (
     <div className="flex items-baseline justify-between pt-2 mt-2 border-t border-bag-border text-xs">
-      <span className="text-bag-mute" title="평가손익(보유중) + 기회손익(청산 후 가상)의 합. 정식 회계 기준 아닌 자조 점수.">
+      <span
+        className="text-bag-mute"
+        title="평가손익(보유중) + 기회손익(청산 후 가상)의 합. 정식 회계 기준 아닌 자조 점수."
+      >
         💀 통장 데미지
       </span>
       <div className="text-right">
@@ -80,6 +101,42 @@ function DamageRow({ krw }: { krw: number }) {
         {eq && (
           <div className="text-[10px] text-bag-mute mt-0.5">
             ≈ {eq} {negative ? "날렸음" : "운빨로 벌었음"}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function DamageRowPct({ displayPnl }: { displayPnl: number }) {
+  const negative = displayPnl < 0;
+  const positive = displayPnl > 0;
+  const humor = pctHumor(displayPnl);
+  return (
+    <div className="flex items-baseline justify-between pt-2 mt-2 border-t border-bag-border text-xs">
+      <span
+        className="text-bag-mute"
+        title="수량 미입력 — % 기반 정신 데미지. 통장 손익은 알 수 없지만 망함의 정도는 측정 가능."
+      >
+        💀 통장 데미지
+      </span>
+      <div className="text-right">
+        <span
+          className={`font-mono font-black ${
+            negative
+              ? "text-red-400"
+              : positive
+                ? "text-emerald-400"
+                : "text-bag-mute"
+          }`}
+        >
+          {displayPnl >= 0 ? "+" : ""}
+          {displayPnl.toFixed(1)}%
+        </span>
+        {humor && (
+          <div className="text-[10px] text-bag-mute mt-0.5">
+            ≈ {humor}
+            <span className="ml-1 opacity-60">(수량 모름)</span>
           </div>
         )}
       </div>
