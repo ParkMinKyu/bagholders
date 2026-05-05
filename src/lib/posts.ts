@@ -19,6 +19,102 @@ export type FeedPost = PostRow & {
   badness: number;
 };
 
+export type TickerStat = {
+  ticker_code: string;
+  ticker_symbol: string;
+  ticker_name: string;
+  last_price: number;
+  last_priced_at: number;
+  buy: TickerSideStat;
+  sell: TickerSideStat;
+  total_count: number;
+  net_pnl_krw: number;
+  has_any_qty: boolean;
+};
+
+export type TickerSideStat = {
+  count: number;
+  avg_entry: number;
+  total_qty: number;
+  avg_display_pnl: number;
+  pnl_krw: number;
+  has_qty: boolean;
+};
+
+export function aggregateByTicker(posts: FeedPost[]): TickerStat[] {
+  const groups = new Map<string, FeedPost[]>();
+  for (const p of posts) {
+    const arr = groups.get(p.ticker_code);
+    if (arr) arr.push(p);
+    else groups.set(p.ticker_code, [p]);
+  }
+
+  const rollup = (group: FeedPost[], isBuy: boolean): TickerSideStat => {
+    if (group.length === 0) {
+      return {
+        count: 0,
+        avg_entry: 0,
+        total_qty: 0,
+        avg_display_pnl: 0,
+        pnl_krw: 0,
+        has_qty: false,
+      };
+    }
+    let entrySum = 0;
+    let qtySum = 0;
+    let pnlSum = 0;
+    let pnlKrw = 0;
+    let hasQty = false;
+    for (const p of group) {
+      const entry = Number(p.entry_price);
+      const last = Number(p.last_price);
+      const qtyRaw = p.quantity == null ? null : Number(p.quantity);
+      const rawPnl = Number(p.pnl_pct);
+      entrySum += entry;
+      pnlSum += isBuy ? rawPnl : -rawPnl;
+      if (qtyRaw != null && qtyRaw > 0 && isFinite(qtyRaw)) {
+        hasQty = true;
+        qtySum += qtyRaw;
+        pnlKrw += isBuy
+          ? (last - entry) * qtyRaw
+          : (entry - last) * qtyRaw;
+      }
+    }
+    return {
+      count: group.length,
+      avg_entry: entrySum / group.length,
+      total_qty: qtySum,
+      avg_display_pnl: pnlSum / group.length,
+      pnl_krw: pnlKrw,
+      has_qty: hasQty,
+    };
+  };
+
+  const stats: TickerStat[] = [];
+  for (const [code, ps] of groups) {
+    const freshest = ps.reduce((acc, p) =>
+      Number(p.last_priced_at) > Number(acc.last_priced_at) ? p : acc,
+    );
+    const buys = ps.filter((p) => p.kind === "buy_high");
+    const sells = ps.filter((p) => p.kind === "sell_low");
+    const buy = rollup(buys, true);
+    const sell = rollup(sells, false);
+    stats.push({
+      ticker_code: code,
+      ticker_symbol: ps[0].ticker_symbol,
+      ticker_name: ps[0].ticker_name,
+      last_price: Number(freshest.last_price),
+      last_priced_at: Number(freshest.last_priced_at),
+      buy,
+      sell,
+      total_count: ps.length,
+      net_pnl_krw: buy.pnl_krw + sell.pnl_krw,
+      has_any_qty: buy.has_qty || sell.has_qty,
+    });
+  }
+  return stats.sort((a, b) => b.total_count - a.total_count);
+}
+
 async function refreshStale(rows: PostRow[]): Promise<PostRow[]> {
   const now = Date.now();
   const stale = rows.filter((r) => now - Number(r.last_priced_at) > PRICE_STALE_MS);

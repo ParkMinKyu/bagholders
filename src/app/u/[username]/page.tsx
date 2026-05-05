@@ -1,7 +1,13 @@
 import { notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
-import { getUserByUsername, listUserPosts, badnessScore } from "@/lib/posts";
+import {
+  aggregateByTicker,
+  badnessScore,
+  getUserByUsername,
+  listUserPosts,
+} from "@/lib/posts";
 import { PostCard } from "@/components/PostCard";
+import { TickerSummary } from "@/components/TickerSummary";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +29,7 @@ export default async function ProfilePage({
   const worst = total === 0 ? 0 : Math.max(...scores);
   const buyCount = posts.filter((p) => p.kind === "buy_high").length;
   const sellCount = total - buyCount;
+  const tickerStats = aggregateByTicker(posts);
 
   return (
     <div className="space-y-4">
@@ -57,11 +64,22 @@ export default async function ProfilePage({
           아직 등록된 인증이 없습니다.
         </div>
       ) : (
-        <div className="space-y-3">
-          {posts.map((p) => (
-            <PostCard key={p.id} post={p} isAuthed={!!viewer} />
-          ))}
-        </div>
+        <>
+          <TickerSummary stats={tickerStats} />
+          <div>
+            <div className="flex items-baseline justify-between mb-2 px-1">
+              <h2 className="text-xs font-bold text-bag-mute uppercase tracking-wider">
+                인증 타임라인
+              </h2>
+              <span className="text-[11px] text-bag-mute">{posts.length}건</span>
+            </div>
+            <div className="space-y-3">
+              {posts.map((p) => (
+                <PostCard key={p.id} post={p} isAuthed={!!viewer} />
+              ))}
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

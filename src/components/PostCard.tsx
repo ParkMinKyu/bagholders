@@ -1,32 +1,6 @@
 import Link from "next/link";
 import { REACTIONS, type FeedPost } from "@/lib/posts";
-
-function fmtTime(ts: number) {
-  const diff = Date.now() - ts;
-  const m = 60 * 1000;
-  const h = 60 * m;
-  const d = 24 * h;
-  if (diff < m) return "방금";
-  if (diff < h) return `${Math.floor(diff / m)}분 전`;
-  if (diff < d) return `${Math.floor(diff / h)}시간 전`;
-  if (diff < 7 * d) return `${Math.floor(diff / d)}일 전`;
-  return new Date(ts).toLocaleDateString("ko-KR");
-}
-
-function fmtKRW(n: number) {
-  if (!isFinite(n)) return "—";
-  if (n >= 1_000_000) return `₩${Math.round(n).toLocaleString("ko-KR")}`;
-  if (n >= 1) return `₩${n.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}`;
-  return `₩${n.toLocaleString("ko-KR", { maximumFractionDigits: 6 })}`;
-}
-
-function fmtKRWShort(n: number) {
-  if (!isFinite(n)) return "—";
-  const abs = Math.abs(n);
-  if (abs >= 100_000_000) return `${(n / 100_000_000).toFixed(1)}억`;
-  if (abs >= 10_000) return `${(n / 10_000).toFixed(1)}만`;
-  return Math.round(n).toLocaleString("ko-KR");
-}
+import { fmtTime, fmtKRW, fmtKRWShort } from "@/lib/format";
 
 function buyHighMessage(displayPnl: number) {
   if (displayPnl <= -80) return "거의 상폐";
