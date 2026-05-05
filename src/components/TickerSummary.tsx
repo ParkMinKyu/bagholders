@@ -53,16 +53,6 @@ function TickerRow({ stat }: { stat: TickerStat }) {
       {stat.sell.count > 0 && (
         <SideRow label="😭 매도" tone="sell" side={stat.sell} />
       )}
-
-      {stat.has_any_qty && stat.total_count > 1 && (
-        <div className="flex items-center justify-between pt-2 mt-2 border-t border-bag-border text-xs">
-          <span className="text-bag-mute">순손익</span>
-          <span className={`font-mono font-black ${pnlColor(stat.net_pnl_krw)}`}>
-            {stat.net_pnl_krw >= 0 ? "+" : "-"}
-            {fmtKRWShort(Math.abs(stat.net_pnl_krw))}
-          </span>
-        </div>
-      )}
     </div>
   );
 }
