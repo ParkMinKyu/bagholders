@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 
+// branch protection ruleset(B) 동작 확인 push.
 // Next.js App Router는 hydration을 위한 inline script + Tailwind 등 inline style 사용.
 // 'unsafe-inline'/'unsafe-eval'을 모두 끄면 페이지가 깨진다.
 // 우리는 inline은 허용하되 폼/프레임/객체/베이스 같은 핵심 attack surface만 잠근다.
