@@ -119,14 +119,14 @@ export function PostCard({
             href={post.image_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-3 block rounded-md overflow-hidden border border-bag-border bg-black/30"
+            className="mt-3 block rounded-md overflow-hidden border border-bag-border bg-black/20"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={post.image_url}
               alt="인증 이미지"
               loading="lazy"
-              className="w-full max-h-96 object-contain"
+              className="mx-auto max-h-64 max-w-full object-contain"
             />
           </a>
         )}
