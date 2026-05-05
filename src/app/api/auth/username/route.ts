@@ -5,6 +5,7 @@ import {
   getCurrentUser,
   verifyPassword,
 } from "@/lib/auth";
+import { audit } from "@/lib/audit";
 import { dbGet, dbRun, type UserRow } from "@/lib/db";
 
 export async function POST(req: Request) {
@@ -39,6 +40,12 @@ export async function POST(req: Request) {
   if (dup) return back("이미 존재하는 닉네임입니다.");
 
   await dbRun("UPDATE users SET username = ? WHERE id = ?", [next, me.id]);
+  audit(req, {
+    type: "username.change",
+    userId: me.id,
+    username: next,
+    meta: { from: me.username },
+  });
 
   // 새 닉네임 프로필로 이동.
   return NextResponse.redirect(new URL(`/u/${next}`, req.url), { status: 303 });

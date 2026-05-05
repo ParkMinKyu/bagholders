@@ -1,6 +1,7 @@
 "use server";
 
 import { getCurrentUser } from "./auth";
+import { audit } from "./audit";
 import {
   addBoardComment,
   voteBoardPost,
@@ -11,6 +12,11 @@ import { dbGet, dbRun } from "./db";
 import { addGuestbookEntry } from "./guestbook";
 import { listFeed, type FeedPost } from "./posts";
 import { REACTIONS } from "./post-kinds";
+import {
+  REPORT_OPTS,
+  checkLocked,
+  recordHit,
+} from "./rate-limit";
 import {
   createReport,
   REPORT_REASONS,
@@ -201,6 +207,21 @@ export async function reportAction(
   if (!REPORT_REASONS.some((r) => r.key === reason)) {
     return { ok: false, error: "사유를 선택해주세요." };
   }
+
+  // 신고 도배 방지: 사용자당 1시간에 10건까지.
+  const rlKey = `report:${user.id}`;
+  const lockedFor = await checkLocked(rlKey, REPORT_OPTS);
+  if (lockedFor !== null) {
+    audit(null, {
+      type: "report.rate_limited",
+      userId: user.id,
+      username: user.username,
+      meta: { lockedFor },
+    });
+    const min = Math.ceil(lockedFor / 60);
+    return { ok: false, error: `신고가 너무 많습니다. ${min}분 후 다시 시도해주세요.` };
+  }
+
   const r = await createReport({
     reporterId: user.id,
     targetType,
@@ -211,5 +232,12 @@ export async function reportAction(
   if (!r.ok) {
     return { ok: false, error: r.duplicate ? "이미 신고한 항목입니다." : "신고 실패" };
   }
+  await recordHit(rlKey, REPORT_OPTS);
+  audit(null, {
+    type: "report.create",
+    userId: user.id,
+    username: user.username,
+    meta: { targetType, targetId, reason },
+  });
   return { ok: true };
 }

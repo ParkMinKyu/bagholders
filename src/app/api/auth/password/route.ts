@@ -6,6 +6,7 @@ import {
   hashPassword,
   verifyPassword,
 } from "@/lib/auth";
+import { audit } from "@/lib/audit";
 import { dbGet, dbRun, type UserRow } from "@/lib/db";
 
 const PASSWORD_MIN = 8;
@@ -43,6 +44,7 @@ export async function POST(req: Request) {
     "DELETE FROM sessions WHERE user_id = ? AND token != ?",
     [me.id, myToken ?? ""],
   );
+  audit(req, { type: "password.change", userId: me.id, username: me.username });
 
   return back("비밀번호가 변경되었습니다. 다른 기기 세션은 모두 종료됐습니다.", "ok");
 }

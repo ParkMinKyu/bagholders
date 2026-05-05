@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@libsql/client": "^0.14.0",
+    "@upstash/redis": "^1.37.0",
     "@vercel/blob": "^2.3.3",
     "bcryptjs": "^2.4.3",
     "next": "^15.5.4",

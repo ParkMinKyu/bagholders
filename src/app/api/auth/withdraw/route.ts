@@ -7,6 +7,7 @@ import {
   getSessionToken,
   withdrawAccount,
 } from "@/lib/auth";
+import { audit } from "@/lib/audit";
 
 export async function POST(req: Request) {
   const me = await getCurrentUser();
@@ -28,12 +29,21 @@ export async function POST(req: Request) {
   if (!password) return back("비밀번호를 입력해주세요.");
 
   const r = await withdrawAccount(me.id, password);
-  if (!r.ok) return back(r.error ?? "탈퇴 실패");
+  if (!r.ok) {
+    audit(req, {
+      type: "withdraw.fail",
+      userId: me.id,
+      username: me.username,
+      meta: { error: r.error },
+    });
+    return back(r.error ?? "탈퇴 실패");
+  }
 
   // 세션 정리.
   const token = await getSessionToken();
   if (token) await destroySession(token);
   await clearSessionCookie();
+  audit(req, { type: "withdraw.ok", userId: me.id, username: me.username });
 
   return NextResponse.redirect(new URL("/?goodbye=1", req.url), { status: 303 });
 }

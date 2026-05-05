@@ -7,6 +7,7 @@ import {
   hashPassword,
   setSessionCookie,
 } from "@/lib/auth";
+import { audit } from "@/lib/audit";
 
 const PASSWORD_MIN = 8;
 
@@ -55,6 +56,7 @@ export async function POST(req: Request) {
   const userId = Number(info.lastInsertRowid);
   const { token, expiresAt } = await createSession(userId);
   await setSessionCookie(token, expiresAt);
+  audit(req, { type: "signup.ok", userId, username });
 
   return NextResponse.redirect(new URL("/", req.url), { status: 303 });
 }
