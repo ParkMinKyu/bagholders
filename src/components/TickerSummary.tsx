@@ -1,5 +1,5 @@
 import type { TickerStat, TickerSideStat } from "@/lib/posts";
-import { fmtKRW, fmtKRWShort, fmtTime } from "@/lib/format";
+import { damageEquivalent, fmtKRW, fmtKRWShort, fmtTime } from "@/lib/format";
 
 function pnlColor(n: number) {
   if (n <= -50) return "text-red-500";
@@ -53,6 +53,35 @@ function TickerRow({ stat }: { stat: TickerStat }) {
       {stat.sell.count > 0 && (
         <SideRow label="😭 매도" tone="sell" side={stat.sell} />
       )}
+
+      {stat.has_any_qty && stat.buy.count > 0 && stat.sell.count > 0 && (
+        <DamageRow krw={stat.net_pnl_krw} />
+      )}
+    </div>
+  );
+}
+
+function DamageRow({ krw }: { krw: number }) {
+  const negative = krw < 0;
+  const eq = damageEquivalent(krw);
+  return (
+    <div className="flex items-baseline justify-between pt-2 mt-2 border-t border-bag-border text-xs">
+      <span className="text-bag-mute" title="평가손익(보유중) + 기회손익(청산 후 가상)의 합. 정식 회계 기준 아닌 자조 점수.">
+        💀 통장 데미지
+      </span>
+      <div className="text-right">
+        <span
+          className={`font-mono font-black ${
+            negative ? "text-red-400" : krw > 0 ? "text-emerald-400" : "text-bag-mute"
+          }`}
+        >
+          {krw >= 0 ? "+" : "-"}
+          {fmtKRWShort(Math.abs(krw))}
+        </span>
+        {negative && eq && (
+          <div className="text-[10px] text-bag-mute mt-0.5">≈ {eq} 날렸음</div>
+        )}
+      </div>
     </div>
   );
 }
