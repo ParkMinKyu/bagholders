@@ -1,5 +1,5 @@
 import { dbAll, dbGet, dbRun, type PostRow, type UserRow } from "./db";
-import { getPrices } from "./coingecko";
+import { getPrices } from "./upbit";
 
 export {
   POST_KINDS,

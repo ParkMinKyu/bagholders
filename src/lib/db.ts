@@ -31,7 +31,7 @@ function getClient(): Client {
   return global.__bagDbClient;
 }
 
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 async function ensureInit(): Promise<void> {
   if (!global.__bagDbInit) {

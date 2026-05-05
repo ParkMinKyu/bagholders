@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { dbRun } from "@/lib/db";
 import { POST_KINDS, calcPnlPct } from "@/lib/posts";
-import { getPrice } from "@/lib/coingecko";
+import { getPrice } from "@/lib/upbit";
 
 const VALID_KINDS = POST_KINDS.map((k) => k.key) as readonly string[];
 

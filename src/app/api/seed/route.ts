@@ -2,26 +2,26 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import type { InValue } from "@libsql/client";
 import { dbAll, dbBatch } from "@/lib/db";
-import { getPrices } from "@/lib/coingecko";
+import { getPrices } from "@/lib/upbit";
 
 export const maxDuration = 60;
 
 const TICKERS = [
-  { id: "bitcoin", symbol: "BTC", name: "Bitcoin", approx: 150_000_000 },
-  { id: "ethereum", symbol: "ETH", name: "Ethereum", approx: 4_500_000 },
-  { id: "ripple", symbol: "XRP", name: "XRP", approx: 3_000 },
-  { id: "dogecoin", symbol: "DOGE", name: "Dogecoin", approx: 200 },
-  { id: "solana", symbol: "SOL", name: "Solana", approx: 250_000 },
-  { id: "cardano", symbol: "ADA", name: "Cardano", approx: 700 },
-  { id: "chainlink", symbol: "LINK", name: "Chainlink", approx: 25_000 },
-  { id: "polkadot", symbol: "DOT", name: "Polkadot", approx: 7_000 },
-  { id: "avalanche-2", symbol: "AVAX", name: "Avalanche", approx: 30_000 },
-  { id: "celo", symbol: "CELO", name: "Celo", approx: 500 },
-  { id: "uniswap", symbol: "UNI", name: "Uniswap", approx: 12_000 },
-  { id: "shiba-inu", symbol: "SHIB", name: "Shiba Inu", approx: 0.025 },
-  { id: "pepe", symbol: "PEPE", name: "Pepe", approx: 0.012 },
-  { id: "aptos", symbol: "APT", name: "Aptos", approx: 8_000 },
-  { id: "arbitrum", symbol: "ARB", name: "Arbitrum", approx: 1_500 },
+  { id: "KRW-BTC", symbol: "BTC", name: "비트코인", approx: 150_000_000 },
+  { id: "KRW-ETH", symbol: "ETH", name: "이더리움", approx: 4_500_000 },
+  { id: "KRW-XRP", symbol: "XRP", name: "리플", approx: 3_000 },
+  { id: "KRW-DOGE", symbol: "DOGE", name: "도지코인", approx: 200 },
+  { id: "KRW-SOL", symbol: "SOL", name: "솔라나", approx: 250_000 },
+  { id: "KRW-ADA", symbol: "ADA", name: "에이다", approx: 700 },
+  { id: "KRW-LINK", symbol: "LINK", name: "체인링크", approx: 25_000 },
+  { id: "KRW-DOT", symbol: "DOT", name: "폴카닷", approx: 7_000 },
+  { id: "KRW-AVAX", symbol: "AVAX", name: "아발란체", approx: 30_000 },
+  { id: "KRW-CELO", symbol: "CELO", name: "셀로", approx: 500 },
+  { id: "KRW-UNI", symbol: "UNI", name: "유니스왑", approx: 12_000 },
+  { id: "KRW-SHIB", symbol: "SHIB", name: "시바이누", approx: 0.025 },
+  { id: "KRW-PEPE", symbol: "PEPE", name: "페페", approx: 0.012 },
+  { id: "KRW-APT", symbol: "APT", name: "앱토스", approx: 8_000 },
+  { id: "KRW-ARB", symbol: "ARB", name: "아비트럼", approx: 1_500 },
 ] as const;
 
 const NICK_BASE = [

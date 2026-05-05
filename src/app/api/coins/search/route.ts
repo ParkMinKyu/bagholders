@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { searchCoins, getPrice } from "@/lib/coingecko";
+import { searchCoins, getPrice } from "@/lib/upbit";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
