@@ -1,4 +1,4 @@
-import Database from "better-sqlite3";
+import { DatabaseSync, type StatementSync } from "node:sqlite";
 import path from "node:path";
 import fs from "node:fs";
 
@@ -11,14 +11,14 @@ if (!fs.existsSync(DATA_DIR)) {
 
 declare global {
   // eslint-disable-next-line no-var
-  var __bagholdersDb: Database.Database | undefined;
+  var __bagholdersDb: DatabaseSync | undefined;
 }
 
-function init(db: Database.Database) {
-  db.pragma("journal_mode = WAL");
-  db.pragma("foreign_keys = ON");
+function init(d: DatabaseSync) {
+  d.exec("PRAGMA journal_mode = WAL");
+  d.exec("PRAGMA foreign_keys = ON");
 
-  db.exec(`
+  d.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       username TEXT NOT NULL UNIQUE,
@@ -61,22 +61,42 @@ function init(db: Database.Database) {
   `);
 }
 
-function getDb(): Database.Database {
+function getDb(): DatabaseSync {
   if (!global.__bagholdersDb) {
-    const db = new Database(DB_PATH);
-    init(db);
-    global.__bagholdersDb = db;
+    const d = new DatabaseSync(DB_PATH);
+    init(d);
+    global.__bagholdersDb = d;
   }
   return global.__bagholdersDb;
 }
 
-export const db = new Proxy({} as Database.Database, {
-  get(_target, prop) {
-    const real = getDb() as unknown as Record<string | symbol, unknown>;
-    const value = real[prop];
-    return typeof value === "function" ? (value as (...a: unknown[]) => unknown).bind(real) : value;
+type SqlValue = string | number | bigint | null | Uint8Array;
+
+type PreparedStatement = {
+  run: (...params: SqlValue[]) => { lastInsertRowid: number | bigint; changes: number };
+  get: <T = unknown>(...params: SqlValue[]) => T | undefined;
+  all: <T = unknown>(...params: SqlValue[]) => T[];
+};
+
+export const db = {
+  prepare(sql: string): PreparedStatement {
+    const stmt = getDb().prepare(sql) as StatementSync;
+    return {
+      run: (...params: SqlValue[]) =>
+        stmt.run(...(params as Parameters<StatementSync["run"]>)) as {
+          lastInsertRowid: number | bigint;
+          changes: number;
+        },
+      get: <T,>(...params: SqlValue[]) =>
+        stmt.get(...(params as Parameters<StatementSync["get"]>)) as T | undefined,
+      all: <T,>(...params: SqlValue[]) =>
+        stmt.all(...(params as Parameters<StatementSync["all"]>)) as T[],
+    };
   },
-});
+  exec(sql: string) {
+    return getDb().exec(sql);
+  },
+};
 
 export type UserRow = {
   id: number;
