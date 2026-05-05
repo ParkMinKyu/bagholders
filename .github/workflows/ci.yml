@@ -12,6 +12,10 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# checkout/setup-node 같은 액션을 Node 24로 실행 (Node 20 deprecated 경고 제거).
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   test:
     name: Tests + Build
