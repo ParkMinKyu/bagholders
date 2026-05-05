@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
-import { getCurrentAdmin } from "@/lib/admin-auth";
+import { CODE_TTL_LABEL, getCurrentAdmin } from "@/lib/admin-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +25,7 @@ export default async function AdminVerifyPage({
       <h1 className="text-xl font-black">🛡 코드 입력</h1>
       <p className="text-bag-mute text-xs">
         <strong className="text-white">{sp.email}</strong> 로 발송된 6자리
-        코드를 입력해주세요. (10분 유효)
+        코드를 입력해주세요. ({CODE_TTL_LABEL} 유효)
       </p>
 
       {sp.error && (

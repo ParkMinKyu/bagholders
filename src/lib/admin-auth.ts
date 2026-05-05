@@ -37,7 +37,9 @@ export function adminEmailAllowed(email: string): boolean {
 
 // ─── 인증 코드 ─────────────────────────────────────────────────
 
-const CODE_TTL_MS = 10 * 60 * 1000; // 10분
+const CODE_TTL_MIN = 5;
+export const CODE_TTL_MS = CODE_TTL_MIN * 60 * 1000;
+export const CODE_TTL_LABEL = `${CODE_TTL_MIN}분`;
 const CODE_MAX_ATTEMPTS = 5;
 
 export function generateCode(): string {

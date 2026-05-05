@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { adminEmailAllowed, createLoginCode } from "@/lib/admin-auth";
+import { CODE_TTL_LABEL, adminEmailAllowed, createLoginCode } from "@/lib/admin-auth";
 import { audit } from "@/lib/audit";
 import { sendEmail } from "@/lib/email";
 import {
@@ -64,12 +64,12 @@ export async function POST(req: Request) {
     html: `
       <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: auto;">
         <h2 style="color: #e63946;">bagholders. 관리자 인증</h2>
-        <p>아래 코드를 10분 안에 입력해주세요.</p>
+        <p>아래 코드를 ${CODE_TTL_LABEL} 안에 입력해주세요.</p>
         <p style="font-size: 32px; font-weight: 800; letter-spacing: 6px; background: #f5f5f5; padding: 16px; text-align: center; border-radius: 8px;">${code}</p>
         <p style="color: #888; font-size: 12px;">본인이 요청하지 않았다면 무시해주세요. 이 메일을 받지 않은 경우 누군가가 이 이메일로 관리자 로그인을 시도한 것입니다.</p>
       </div>
     `,
-    text: `bagholders. 관리자 인증번호: ${code} (10분 유효)`,
+    text: `bagholders. 관리자 인증번호: ${code} (${CODE_TTL_LABEL} 유효)`,
   });
 
   audit(req, {
