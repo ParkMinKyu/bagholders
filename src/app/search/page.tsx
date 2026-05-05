@@ -108,35 +108,38 @@ export default async function SearchPage({
               </div>
               <ol className="divide-y divide-bag-border">
                 {tickers.map((t) => (
-                  <li
-                    key={t.ticker_code}
-                    className="flex items-center gap-3 px-2 py-2.5"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="font-bold truncate">
-                        {t.ticker_name}
-                        <span className="ml-2 text-xs text-bag-mute font-mono">
-                          {t.ticker_symbol}
-                        </span>
+                  <li key={t.ticker_code}>
+                    <Link
+                      href={`/t/${encodeURIComponent(t.ticker_code)}`}
+                      prefetch={false}
+                      className="flex items-center gap-3 px-2 py-2.5 -mx-2 rounded hover:bg-bag-accent/5 transition"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="font-bold truncate">
+                          {t.ticker_name}
+                          <span className="ml-2 text-xs text-bag-mute font-mono">
+                            {t.ticker_symbol}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-bag-mute mt-0.5 flex flex-wrap gap-x-2">
+                          <span>🤡 {t.buy_count}</span>
+                          <span>😭 {t.sell_count}</span>
+                          {t.last_price > 0 && (
+                            <>
+                              <span className="font-mono text-white/80">
+                                {fmtKRW(t.last_price)}
+                              </span>
+                              <span className="opacity-60">
+                                {fmtTime(t.last_priced_at)}
+                              </span>
+                            </>
+                          )}
+                        </div>
                       </div>
-                      <div className="text-[11px] text-bag-mute mt-0.5 flex flex-wrap gap-x-2">
-                        <span>🤡 {t.buy_count}</span>
-                        <span>😭 {t.sell_count}</span>
-                        {t.last_price > 0 && (
-                          <>
-                            <span className="font-mono text-white/80">
-                              {fmtKRW(t.last_price)}
-                            </span>
-                            <span className="opacity-60">
-                              {fmtTime(t.last_priced_at)}
-                            </span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                    <span className="text-xs text-bag-mute">
-                      인증 {t.post_count}건
-                    </span>
+                      <span className="text-xs text-bag-mute flex-shrink-0">
+                        인증 {t.post_count}건 →
+                      </span>
+                    </Link>
                   </li>
                 ))}
               </ol>

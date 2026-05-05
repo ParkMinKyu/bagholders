@@ -232,6 +232,22 @@ export async function listUserPosts(
   return decoratePosts(posts, viewerId);
 }
 
+export async function listTickerPosts(
+  tickerCode: string,
+  viewerId: number | null,
+  limit = 100,
+): Promise<FeedPost[]> {
+  const posts = await dbAll<PostRow & { username: string }>(
+    `SELECT p.*, u.username FROM posts p
+     JOIN users u ON u.id = p.user_id
+     WHERE p.ticker_code = ?
+     ORDER BY p.created_at DESC
+     LIMIT ?`,
+    [tickerCode, limit],
+  );
+  return decoratePosts(posts, viewerId);
+}
+
 export type RankingRow = {
   user_id: number;
   username: string;
