@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { getCurrentUser } from "@/lib/auth";
 import { getPostById } from "@/lib/posts";
 import { listComments } from "@/lib/comments";
@@ -8,6 +9,42 @@ import { CommentForm } from "@/components/CommentForm";
 import { fmtTime } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const postId = Number(id);
+  if (!Number.isFinite(postId)) return { title: "게시물 없음", robots: { index: false } };
+  const post = await getPostById(postId, null);
+  if (!post) return { title: "게시물 없음", robots: { index: false } };
+  const kindLabel = post.kind === "buy_high" ? "고점매수" : "저점매도";
+  const pnl = Number(post.pnl_pct).toFixed(2);
+  const title = `${post.ticker_name} ${kindLabel} ${post.kind === "buy_high" ? pnl : (-Number(post.pnl_pct)).toFixed(2)}%`;
+  const description =
+    post.comment?.slice(0, 160) ||
+    `@${post.username}의 ${post.ticker_name}(${post.ticker_symbol}) ${kindLabel} 인증`;
+  const url = `/p/${post.id}`;
+  return {
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      title: `${title} · bagholders.`,
+      description,
+      url,
+      type: "article",
+      images: post.image_url ? [{ url: post.image_url }] : undefined,
+    },
+    twitter: {
+      title: `${title} · bagholders.`,
+      description,
+      card: post.image_url ? "summary_large_image" : "summary",
+    },
+  };
+}
 
 export default async function PostDetailPage({
   params,

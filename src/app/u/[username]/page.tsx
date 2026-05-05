@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { getCurrentUser } from "@/lib/auth";
 import {
   aggregateByTicker,
@@ -18,6 +19,27 @@ import { damageEquivalent, fmtKRWShort, pctHumor } from "@/lib/format";
 import { getProfileTitle } from "@/lib/title";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ username: string }>;
+}): Promise<Metadata> {
+  const { username: raw } = await params;
+  const username = decodeURIComponent(raw);
+  const target = await getUserByUsername(username);
+  if (!target) return { title: "사용자 없음", robots: { index: false } };
+  const title = `@${target.username}`;
+  const description = `${target.username}의 손실 인증 자서전 — 고점매수·저점매도 기록`;
+  const url = `/u/${target.username}`;
+  return {
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: { title: `${title} · bagholders.`, description, url, type: "profile" },
+    twitter: { title: `${title} · bagholders.`, description },
+  };
+}
 
 export default async function ProfilePage({
   params,

@@ -1,11 +1,64 @@
 import "./globals.css";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://bagholders.vercel.app";
+
 export const metadata: Metadata = {
-  title: "bagholders. — 손실 인증 커뮤니티",
-  description: "고점매수, 저점매도. 인증으로 남기는 자조 SNS.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "bagholders. — 손실 인증 커뮤니티",
+    template: "%s · bagholders.",
+  },
+  description:
+    "고점매수, 저점매도. 인증으로 남기는 자조 SNS — 코인 시세 5분마다 자동 갱신.",
+  keywords: [
+    "코인",
+    "비트코인",
+    "이더리움",
+    "고점매수",
+    "저점매도",
+    "물렸음",
+    "손실인증",
+    "코인 커뮤니티",
+    "갤러리",
+    "bagholders",
+  ],
+  applicationName: "bagholders.",
+  authors: [{ name: "bagholders." }],
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    locale: "ko_KR",
+    url: "/",
+    siteName: "bagholders.",
+    title: "bagholders. — 손실 인증 커뮤니티",
+    description: "고점매수, 저점매도. 인증으로 남기는 자조 SNS.",
+  },
+  twitter: {
+    card: "summary",
+    title: "bagholders.",
+    description: "고점매수, 저점매도. 인증으로 남기는 자조 SNS.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0e0e10",
+  colorScheme: "dark",
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

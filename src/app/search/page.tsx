@@ -1,8 +1,17 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { searchTickers, searchUsers } from "@/lib/posts";
 import { fmtKRW, fmtTime } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "검색",
+  description: "사용자 닉네임이나 코인 심볼/이름으로 검색.",
+  alternates: { canonical: "/search" },
+  // 검색 결과 페이지는 search engine 인덱싱 불필요
+  robots: { index: false, follow: true },
+};
 
 export default async function SearchPage({
   searchParams,

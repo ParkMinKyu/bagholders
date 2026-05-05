@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { getCurrentUser } from "@/lib/auth";
 import {
   getBoardPost,
@@ -12,6 +13,38 @@ import { BoardCommentSection } from "@/components/BoardCommentSection";
 import { fmtTime } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const postId = Number(id);
+  if (!Number.isFinite(postId)) return { title: "글 없음", robots: { index: false } };
+  const post = await getBoardPost(postId);
+  if (!post) return { title: "글 없음", robots: { index: false } };
+  const title = `[${categoryLabel(post.category)}] ${post.title}`;
+  const description = post.body.slice(0, 160).replace(/\s+/g, " ").trim();
+  const url = `/b/${post.id}`;
+  return {
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      title: `${title} · bagholders.`,
+      description,
+      url,
+      type: "article",
+      images: post.image_url ? [{ url: post.image_url }] : undefined,
+    },
+    twitter: {
+      title: `${title} · bagholders.`,
+      description,
+      card: post.image_url ? "summary_large_image" : "summary",
+    },
+  };
+}
 
 export default async function BoardDetailPage({
   params,

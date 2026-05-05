@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { getCurrentUser } from "@/lib/auth";
 import { badnessScore, listTickerPosts } from "@/lib/posts";
 import { isFavorited } from "@/lib/favorites";
@@ -7,6 +8,29 @@ import { PostCard } from "@/components/PostCard";
 import { fmtKRW, fmtTime } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ code: string }>;
+}): Promise<Metadata> {
+  const { code: raw } = await params;
+  const tickerCode = decodeURIComponent(raw);
+  // 첫 게시물에서 이름/심볼 끌어옴 — 인증 없는 코인은 404 처리됨
+  const posts = await listTickerPosts(tickerCode, null, 1);
+  if (posts.length === 0) return { title: "코인 없음", robots: { index: false } };
+  const p = posts[0];
+  const title = `${p.ticker_name} (${p.ticker_symbol}) 인증 모음`;
+  const description = `${p.ticker_name}에 물린 사람들의 인증. 평가손익·기회손익을 한눈에.`;
+  const url = `/t/${tickerCode}`;
+  return {
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: { title: `${title} · bagholders.`, description, url, type: "article" },
+    twitter: { title: `${title} · bagholders.`, description },
+  };
+}
 
 export default async function TickerPage({
   params,

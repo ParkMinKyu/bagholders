@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { getCurrentUser } from "@/lib/auth";
 import {
   listBoardPosts,
@@ -13,6 +14,17 @@ import {
 import { fmtTime } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "갤러리",
+  description: "잡담·질문·시황·짤방 — 자유 게시판. 추천순으로 오늘의 인기 글 모아보기.",
+  alternates: { canonical: "/b" },
+  openGraph: {
+    title: "갤러리 · bagholders.",
+    description: "잡담·질문·시황·짤방 — 자유 게시판.",
+    url: "/b",
+  },
+};
 
 const HOT_PERIODS: { key: BoardHotPeriod; label: string }[] = [
   { key: "day", label: "오늘" },

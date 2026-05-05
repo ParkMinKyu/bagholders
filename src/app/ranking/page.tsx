@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { getCurrentUser } from "@/lib/auth";
 import {
   getCoinRanking,
@@ -8,6 +9,18 @@ import {
 import { fmtKRW } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "명예의 전당",
+  description:
+    "고점매수·저점매도 판독기 랭킹. 평가가 가혹할수록 윗자리. 가장 많이 물린 코인도 함께.",
+  alternates: { canonical: "/ranking" },
+  openGraph: {
+    title: "명예의 전당 · bagholders.",
+    description: "평가가 가혹할수록 윗자리.",
+    url: "/ranking",
+  },
+};
 
 const MEDALS = ["🥇", "🥈", "🥉"];
 type Tab = "users" | "coins";
