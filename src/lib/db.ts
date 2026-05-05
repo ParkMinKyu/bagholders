@@ -31,7 +31,7 @@ function getClient(): Client {
   return global.__bagDbClient;
 }
 
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 5;
 
 async function ensureInit(): Promise<void> {
   if (!global.__bagDbInit) {
@@ -113,6 +113,17 @@ async function ensureInit(): Promise<void> {
         )`,
         `CREATE INDEX IF NOT EXISTS idx_follows_following ON follows(following_id)`,
         `CREATE INDEX IF NOT EXISTS idx_follows_follower ON follows(follower_id)`,
+        // v5: 코인 즐겨찾기 (additive — symbol/name은 작성 시점 스냅샷).
+        `CREATE TABLE IF NOT EXISTS coin_favorites (
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          ticker_code TEXT NOT NULL,
+          ticker_symbol TEXT NOT NULL,
+          ticker_name TEXT NOT NULL,
+          created_at INTEGER NOT NULL,
+          PRIMARY KEY (user_id, ticker_code)
+        )`,
+        `CREATE INDEX IF NOT EXISTS idx_coin_favs_user ON coin_favorites(user_id, created_at DESC)`,
+        `CREATE INDEX IF NOT EXISTS idx_coin_favs_ticker ON coin_favorites(ticker_code)`,
       );
 
       await c.batch(stmts, "deferred");

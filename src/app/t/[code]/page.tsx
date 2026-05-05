@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { badnessScore, listTickerPosts } from "@/lib/posts";
+import { isFavorited } from "@/lib/favorites";
 import { PostCard } from "@/components/PostCard";
 import { fmtKRW, fmtTime } from "@/lib/format";
 
@@ -18,7 +19,10 @@ export default async function TickerPage({
   // viewer 결과가 my_reactions 조회에 필요하므로 직렬. 단 getCurrentUser는
   // React.cache라 layout과 dedupe됨.
   const viewer = await getCurrentUser();
-  const posts = await listTickerPosts(tickerCode, viewer?.id ?? null);
+  const [posts, viewerFavorited] = await Promise.all([
+    listTickerPosts(tickerCode, viewer?.id ?? null),
+    viewer ? isFavorited(viewer.id, tickerCode) : Promise.resolve(false),
+  ]);
 
   if (posts.length === 0) {
     notFound();
@@ -37,9 +41,34 @@ export default async function TickerPage({
   return (
     <div className="space-y-4">
       <section className="panel p-5">
-        <div className="flex items-baseline gap-2 flex-wrap">
-          <h1 className="text-2xl font-black">{tickerName}</h1>
-          <span className="text-sm font-mono text-bag-mute">{tickerSymbol}</span>
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div className="flex items-baseline gap-2 flex-wrap min-w-0">
+            <h1 className="text-2xl font-black truncate">{tickerName}</h1>
+            <span className="text-sm font-mono text-bag-mute">{tickerSymbol}</span>
+          </div>
+          {viewer && (
+            <form action="/api/coins/favorite" method="post" className="flex-shrink-0">
+              <input type="hidden" name="ticker_code" value={tickerCode} />
+              <input type="hidden" name="ticker_symbol" value={tickerSymbol} />
+              <input type="hidden" name="ticker_name" value={tickerName} />
+              <input
+                type="hidden"
+                name="action"
+                value={viewerFavorited ? "unfavorite" : "favorite"}
+              />
+              <button
+                type="submit"
+                aria-label={viewerFavorited ? "즐겨찾기 해제" : "즐겨찾기"}
+                className={
+                  viewerFavorited
+                    ? "btn !py-1 !px-3 text-xs !border-bag-gold !text-bag-gold"
+                    : "btn !py-1 !px-3 text-xs"
+                }
+              >
+                {viewerFavorited ? "★ 즐겨찾기됨" : "☆ 즐겨찾기"}
+              </button>
+            </form>
+          )}
         </div>
         <p className="text-bag-mute text-sm mt-1">
           이 코인에 물린 사람들의 인증 모음. 시세는 5분마다 자동 갱신.

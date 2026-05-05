@@ -8,6 +8,7 @@ import {
   listUserPosts,
 } from "@/lib/posts";
 import { getFollowCounts, isFollowing } from "@/lib/follows";
+import { getFavoriteCount } from "@/lib/favorites";
 import { PostCard } from "@/components/PostCard";
 import { TickerSummary } from "@/components/TickerSummary";
 import { damageEquivalent, fmtKRWShort, pctHumor } from "@/lib/format";
@@ -29,10 +30,11 @@ export default async function ProfilePage({
   if (!target) notFound();
 
   const isSelf = !!viewer && viewer.id === target.id;
-  const [posts, followCounts, viewerFollowsTarget] = await Promise.all([
+  const [posts, followCounts, viewerFollowsTarget, favCount] = await Promise.all([
     listUserPosts(target.id, viewer?.id ?? null),
     getFollowCounts(target.id),
     viewer && !isSelf ? isFollowing(viewer.id, target.id) : Promise.resolve(false),
+    getFavoriteCount(target.id),
   ]);
 
   const total = posts.length;
@@ -107,7 +109,7 @@ export default async function ProfilePage({
               : "이 사람이 사는 코인, 잠시 관망을 추천합니다."}
         </p>
 
-        <div className="mt-3 flex gap-4 text-sm">
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm">
           <Link
             href={`/u/${target.username}/followers`}
             prefetch={false}
@@ -123,6 +125,14 @@ export default async function ProfilePage({
           >
             <span className="font-bold">{followCounts.following}</span>
             <span className="text-bag-mute ml-1">팔로잉</span>
+          </Link>
+          <Link
+            href={`/u/${target.username}/favorites`}
+            prefetch={false}
+            className="hover:text-bag-accent"
+          >
+            <span className="font-bold">★ {favCount}</span>
+            <span className="text-bag-mute ml-1">즐겨찾기</span>
           </Link>
         </div>
 
