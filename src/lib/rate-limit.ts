@@ -124,7 +124,11 @@ function memCheckLocked(key: string, opts: RateLimitOpts): number | null {
   if (!a) return null;
   const now = Date.now();
   if (a.lockedUntil > now) return Math.ceil((a.lockedUntil - now) / 1000);
-  if (now > a.lockedUntil + opts.windowMs) memStore.delete(key);
+  // 한 번이라도 잠겼던 항목만 expiry 정리. 카운팅 중인(lockedUntil=0) 항목은
+  // 보존해서 윈도우 안에 누적되도록 함.
+  if (a.lockedUntil > 0 && now > a.lockedUntil + opts.windowMs) {
+    memStore.delete(key);
+  }
   return null;
 }
 
