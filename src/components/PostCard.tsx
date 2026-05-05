@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { type FeedPost } from "@/lib/posts";
-import { fmtTime, fmtKRW, fmtKRWShort } from "@/lib/format";
+import { fmtTime, fmtKRW, fmtKRWShort, safeImageUrl } from "@/lib/format";
 import { ReactionsRow } from "./ReactionsRow";
 import { ReportButton } from "./ReportButton";
 
@@ -122,22 +122,26 @@ export function PostCard({
         {post.comment && (
           <p className="mt-3 text-sm whitespace-pre-wrap leading-relaxed">{post.comment}</p>
         )}
-        {post.image_url && (
-          <a
-            href={post.image_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-3 block rounded-md overflow-hidden border border-bag-border bg-black/20"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={post.image_url}
-              alt="인증 이미지"
-              loading="lazy"
-              className="mx-auto max-h-64 max-w-full object-contain"
-            />
-          </a>
-        )}
+        {(() => {
+          const safe = safeImageUrl(post.image_url);
+          if (!safe) return null;
+          return (
+            <a
+              href={safe}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 block rounded-md overflow-hidden border border-bag-border bg-black/20"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={safe}
+                alt="인증 이미지"
+                loading="lazy"
+                className="mx-auto max-h-64 max-w-full object-contain"
+              />
+            </a>
+          );
+        })()}
       </div>
 
       <ReactionsRow

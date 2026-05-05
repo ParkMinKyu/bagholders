@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
+import crypto from "node:crypto";
 import type { InValue } from "@libsql/client";
 import { dbAll, dbBatch } from "@/lib/db";
 import { getPrices } from "@/lib/upbit";
@@ -164,14 +165,21 @@ async function runSeed(req: Request) {
   }
 
   const livePrices = await getPrices(TICKERS.map((t) => t.id));
-  const seedHash = await bcrypt.hash("seed_disabled", 6);
   const usernames = generateUsernames(userCount);
 
-  // Insert users in batches
-  const userInserts = usernames.map((name, i) => ({
-    sql: "INSERT INTO users (username, password_hash, bio, created_at) VALUES (?, ?, '[seed]', ?)",
-    args: [name, seedHash, now - (usernames.length - i) * 60_000],
-  }));
+  // 시드 사용자마다 랜덤·미공개 비밀번호로 해시 생성 (동일 비밀번호 공유 시
+  // 소스가 공개되면 시드 계정 전체가 탈취되는 문제 해결).
+  // cost=4: 랜덤 plaintext가 추측 불가하므로 빠른 비용으로 충분.
+  const userInserts: { sql: string; args: InValue[] }[] = await Promise.all(
+    usernames.map(async (name, i) => {
+      const randomPlain = crypto.randomBytes(32).toString("hex");
+      const hash = await bcrypt.hash(randomPlain, 4);
+      return {
+        sql: "INSERT INTO users (username, password_hash, bio, created_at) VALUES (?, ?, '[seed]', ?)",
+        args: [name, hash, now - (usernames.length - i) * 60_000],
+      };
+    }),
+  );
   for (let i = 0; i < userInserts.length; i += 100) {
     await dbBatch(userInserts.slice(i, i + 100));
   }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import {
+  PASSWORD_MAX,
   clearSessionCookie,
   destroySession,
   getCurrentUser,
@@ -12,7 +13,7 @@ export async function POST(req: Request) {
   if (!me) return NextResponse.redirect(new URL("/login", req.url), { status: 303 });
 
   const form = await req.formData();
-  const password = String(form.get("password") ?? "");
+  const password = String(form.get("password") ?? "").slice(0, PASSWORD_MAX);
   const confirm = String(form.get("confirm") ?? "");
 
   const back = (error: string) => {

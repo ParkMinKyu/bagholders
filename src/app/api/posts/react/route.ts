@@ -10,11 +10,23 @@ export async function POST(req: Request) {
   const form = await req.formData();
   const postId = Number(form.get("post_id"));
   const kind = String(form.get("kind") ?? "");
-  const referer = req.headers.get("referer") ?? new URL("/", req.url).toString();
+
+  // referer를 redirect 대상으로 쓰되 same-origin만 허용 (open redirect 방어).
+  const reqOrigin = new URL(req.url).origin;
+  const refererRaw = req.headers.get("referer");
+  let dest: string = new URL("/", req.url).toString();
+  if (refererRaw) {
+    try {
+      const r = new URL(refererRaw);
+      if (r.origin === reqOrigin) dest = r.toString();
+    } catch {
+      // 잘못된 URL 무시
+    }
+  }
 
   const valid = REACTIONS.some((r) => r.kind === kind);
   if (!valid || !Number.isFinite(postId)) {
-    return NextResponse.redirect(referer, { status: 303 });
+    return NextResponse.redirect(dest, { status: 303 });
   }
 
   const exists = await dbGet<{ id: number }>(
@@ -34,5 +46,5 @@ export async function POST(req: Request) {
     );
   }
 
-  return NextResponse.redirect(referer, { status: 303 });
+  return NextResponse.redirect(dest, { status: 303 });
 }

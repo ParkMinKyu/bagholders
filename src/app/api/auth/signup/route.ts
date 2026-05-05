@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { dbGet, dbRun } from "@/lib/db";
 import {
+  PASSWORD_MAX,
   USERNAME_REGEX,
   createSession,
   hashPassword,
   setSessionCookie,
 } from "@/lib/auth";
+
+const PASSWORD_MIN = 8;
 
 export async function POST(req: Request) {
   const form = await req.formData();
@@ -24,16 +27,21 @@ export async function POST(req: Request) {
   if (!USERNAME_REGEX.test(username)) {
     return back("닉네임은 한글/영문/숫자/_ 조합 2~16자만 가능합니다.");
   }
-  if (password.length < 6) {
-    return back("비밀번호는 6자 이상이어야 합니다.");
+  if (password.length < PASSWORD_MIN) {
+    return back(`비밀번호는 ${PASSWORD_MIN}자 이상이어야 합니다.`);
+  }
+  if (password.length > PASSWORD_MAX) {
+    return back(`비밀번호는 ${PASSWORD_MAX}자 이하여야 합니다.`);
   }
   if (!agreeTerms) return back("이용약관에 동의해주세요.");
   if (!agreePrivacy) return back("개인정보처리방침에 동의해주세요.");
   if (!ageOk) return back("만 14세 이상만 가입할 수 있습니다.");
 
-  const existing = await dbGet<{ id: number }>("SELECT id FROM users WHERE username = ?", [
-    username,
-  ]);
+  // Case-insensitive 중복 검사 (Alice/alice 사칭 방어).
+  const existing = await dbGet<{ id: number }>(
+    "SELECT id FROM users WHERE LOWER(username) = LOWER(?)",
+    [username],
+  );
   if (existing) {
     return back("이미 존재하는 닉네임입니다.");
   }

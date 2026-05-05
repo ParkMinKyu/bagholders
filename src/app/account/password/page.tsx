@@ -55,12 +55,13 @@ export default async function PasswordPage({
           />
         </div>
         <div>
-          <label className="text-xs text-bag-mute">새 비밀번호 (6자 이상)</label>
+          <label className="text-xs text-bag-mute">새 비밀번호 (8~128자)</label>
           <input
             type="password"
             name="next"
             required
-            minLength={6}
+            minLength={8}
+            maxLength={128}
             autoComplete="new-password"
             className="input mt-1"
           />
@@ -71,7 +72,8 @@ export default async function PasswordPage({
             type="password"
             name="confirm"
             required
-            minLength={6}
+            minLength={8}
+            maxLength={128}
             autoComplete="new-password"
             className="input mt-1"
           />

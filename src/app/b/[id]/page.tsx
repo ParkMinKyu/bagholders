@@ -11,7 +11,7 @@ import { categoryLabel } from "@/lib/board-config";
 import { BoardVoteBar } from "@/components/BoardVoteBar";
 import { BoardCommentSection } from "@/components/BoardCommentSection";
 import { ReportButton } from "@/components/ReportButton";
-import { fmtTime } from "@/lib/format";
+import { fmtTime, safeImageUrl } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -110,22 +110,26 @@ export default async function BoardDetailPage({
           {post.body}
         </div>
 
-        {post.image_url && (
-          <a
-            href={post.image_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block rounded-md overflow-hidden border border-bag-border bg-black/20"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={post.image_url}
-              alt="첨부 이미지"
-              loading="lazy"
-              className="mx-auto max-h-96 max-w-full object-contain"
-            />
-          </a>
-        )}
+        {(() => {
+          const safe = safeImageUrl(post.image_url);
+          if (!safe) return null;
+          return (
+            <a
+              href={safe}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block rounded-md overflow-hidden border border-bag-border bg-black/20"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={safe}
+                alt="첨부 이미지"
+                loading="lazy"
+                className="mx-auto max-h-96 max-w-full object-contain"
+              />
+            </a>
+          );
+        })()}
 
         <div className="pt-3 border-t border-bag-border flex justify-center">
           <BoardVoteBar

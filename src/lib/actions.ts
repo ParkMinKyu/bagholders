@@ -132,7 +132,7 @@ export async function voteBoardPostAction(
   if (!Number.isFinite(postId)) return { ok: false, error: "잘못된 글입니다." };
   if (kind !== "up" && kind !== "down") return { ok: false, error: "잘못된 투표입니다." };
   const r = await voteBoardPost(postId, user.id, kind);
-  if (!r) return { ok: false, error: "글이 없습니다." };
+  if (!r) return { ok: false, error: "투표할 수 없는 글입니다." };
   return { ok: true, upvotes: r.upvotes, downvotes: r.downvotes, my: r.my };
 }
 

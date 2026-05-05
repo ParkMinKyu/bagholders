@@ -23,13 +23,14 @@ export default async function SignupPage({
           <input className="input mt-1" name="username" required maxLength={16} autoComplete="username" />
         </div>
         <div>
-          <label className="text-xs text-bag-mute">비밀번호 (6자 이상)</label>
+          <label className="text-xs text-bag-mute">비밀번호 (8~128자)</label>
           <input
             className="input mt-1"
             type="password"
             name="password"
             required
-            minLength={6}
+            minLength={8}
+            maxLength={128}
             autoComplete="new-password"
           />
         </div>

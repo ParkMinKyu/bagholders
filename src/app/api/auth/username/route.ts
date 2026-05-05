@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import {
+  PASSWORD_MAX,
   USERNAME_REGEX,
   getCurrentUser,
   verifyPassword,
@@ -12,7 +13,7 @@ export async function POST(req: Request) {
 
   const form = await req.formData();
   const next = String(form.get("username") ?? "").trim();
-  const password = String(form.get("password") ?? "");
+  const password = String(form.get("password") ?? "").slice(0, PASSWORD_MAX);
 
   const back = (error: string) => {
     const url = new URL("/account/username", req.url);
@@ -30,9 +31,10 @@ export async function POST(req: Request) {
   const ok = await verifyPassword(password, u.password_hash);
   if (!ok) return back("비밀번호가 일치하지 않습니다.");
 
+  // Case-insensitive 중복 검사 (본인 ID는 제외).
   const dup = await dbGet<{ id: number }>(
-    "SELECT id FROM users WHERE username = ?",
-    [next],
+    "SELECT id FROM users WHERE LOWER(username) = LOWER(?) AND id != ?",
+    [next, me.id],
   );
   if (dup) return back("이미 존재하는 닉네임입니다.");
 

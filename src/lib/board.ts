@@ -219,6 +219,14 @@ export async function voteBoardPost(
   userId: number,
   kind: VoteKind,
 ): Promise<{ upvotes: number; downvotes: number; my: VoteKind | null } | null> {
+  // 자기 글 투표 차단 (셀프 추천으로 점수 부풀리기 방어).
+  const post = await dbGet<{ user_id: number | null }>(
+    "SELECT user_id FROM board_posts WHERE id = ?",
+    [postId],
+  );
+  if (!post) return null;
+  if (post.user_id != null && Number(post.user_id) === userId) return null;
+
   const exists = await dbGet<{ kind: string }>(
     "SELECT kind FROM board_votes WHERE post_id = ? AND user_id = ?",
     [postId, userId],

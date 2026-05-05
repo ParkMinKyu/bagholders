@@ -56,6 +56,19 @@ export function damageEquivalent(krw: number): string | null {
   return `강남 아파트 ${(abs / 2_500_000_000).toFixed(1)}채`;
 }
 
+// 외부 URL 렌더링 시 javascript: / data: 등 위험 스킴 차단.
+// http/https URL만 통과시킴.
+export function safeImageUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    if (u.protocol !== "https:" && u.protocol !== "http:") return null;
+    return url;
+  } catch {
+    return null;
+  }
+}
+
 // 평균 망함률(displayPnl, 음수=망함, 양수=이익)에 따른 유머 멘트.
 export function pctHumor(displayPnl: number): string | null {
   const v = displayPnl;

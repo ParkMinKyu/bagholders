@@ -7,12 +7,29 @@ import { dbBatch, dbGet, dbRun, type UserRow } from "./db";
 const COOKIE_NAME = "bag_session";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 
+export const PASSWORD_MAX = 128;
+
+// 콜드 스타트 시 1회 계산되는 더미 해시. 사용자 부재 시 timing 차이를
+// 줄이기 위해 항상 같은 형태의 bcrypt.compare를 수행하는 데 사용.
+const DUMMY_HASH = bcrypt.hashSync("not-a-real-password", 10);
+
 export async function hashPassword(plain: string) {
   return bcrypt.hash(plain, 10);
 }
 
 export async function verifyPassword(plain: string, hash: string) {
-  return bcrypt.compare(plain, hash);
+  // bcrypt.compare는 hash가 비정상이면 false 반환. 일관된 비용 보장 위해 더미 사용.
+  return bcrypt.compare(plain, hash || DUMMY_HASH);
+}
+
+// timing-safe verification: 사용자 미존재여도 항상 bcrypt 1회 실행.
+export async function verifyPasswordTimingSafe(
+  plain: string,
+  hash: string | null | undefined,
+): Promise<boolean> {
+  const result = await bcrypt.compare(plain, hash || DUMMY_HASH);
+  // hash가 없으면 결과를 강제로 false (실수로 더미와 일치하는 plain 방어).
+  return !!hash && result;
 }
 
 export async function createSession(userId: number) {
