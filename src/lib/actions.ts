@@ -1,6 +1,7 @@
 "use server";
 
 import { getCurrentUser } from "./auth";
+import { addComment } from "./comments";
 import { dbGet, dbRun } from "./db";
 import { REACTIONS } from "./post-kinds";
 
@@ -38,4 +39,22 @@ export async function toggleReactionAction(
     [postId, user.id, kind, Date.now()],
   );
   return { ok: true, active: true };
+}
+
+export type CommentAddResult = {
+  ok: boolean;
+  error?: string;
+};
+
+export async function addCommentAction(
+  postId: number,
+  body: string,
+): Promise<CommentAddResult> {
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "로그인이 필요합니다." };
+  if (!Number.isFinite(postId)) return { ok: false, error: "잘못된 게시물입니다." };
+  if (!body.trim()) return { ok: false, error: "내용을 입력해주세요." };
+  const r = await addComment(postId, user.id, body);
+  if (!r) return { ok: false, error: "내용을 입력해주세요." };
+  return { ok: true };
 }

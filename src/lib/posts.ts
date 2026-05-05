@@ -17,6 +17,7 @@ export type FeedPost = PostRow & {
   reaction_counts: Record<string, number>;
   my_reactions: string[];
   badness: number;
+  comment_count: number;
 };
 
 export type TickerStat = {
@@ -167,8 +168,8 @@ async function decoratePosts(
   const ids = refreshed.map((p) => p.id);
   const placeholders = ids.map(() => "?").join(",");
 
-  // 두 쿼리 병렬 실행 (libsql 클라이언트는 동시 execute 지원).
-  const [counts, myReacts] = await Promise.all([
+  // 세 쿼리 병렬 실행 (libsql 클라이언트는 동시 execute 지원).
+  const [counts, myReacts, commentCounts] = await Promise.all([
     dbAll<{ post_id: number; kind: string; n: number }>(
       `SELECT post_id, kind, COUNT(*) AS n FROM reactions
        WHERE post_id IN (${placeholders})
@@ -182,7 +183,16 @@ async function decoratePosts(
           [...ids, viewerId],
         )
       : Promise.resolve([] as { post_id: number; kind: string }[]),
+    dbAll<{ post_id: number; n: number }>(
+      `SELECT post_id, COUNT(*) AS n FROM comments
+       WHERE post_id IN (${placeholders})
+       GROUP BY post_id`,
+      ids,
+    ),
   ]);
+
+  const commentMap = new Map<number, number>();
+  for (const r of commentCounts) commentMap.set(Number(r.post_id), Number(r.n));
 
   const countMap = new Map<number, Record<string, number>>();
   for (const r of counts) {
@@ -200,6 +210,7 @@ async function decoratePosts(
     reaction_counts: countMap.get(p.id) ?? {},
     my_reactions: myMap.get(p.id) ?? [],
     badness: badnessScore(p.kind, Number(p.pnl_pct)),
+    comment_count: commentMap.get(p.id) ?? 0,
   }));
 }
 
@@ -230,6 +241,21 @@ export async function listUserPosts(
     [userId],
   );
   return decoratePosts(posts, viewerId);
+}
+
+export async function getPostById(
+  postId: number,
+  viewerId: number | null,
+): Promise<FeedPost | null> {
+  const rows = await dbAll<PostRow & { username: string }>(
+    `SELECT p.*, u.username FROM posts p
+     JOIN users u ON u.id = p.user_id
+     WHERE p.id = ?`,
+    [postId],
+  );
+  if (rows.length === 0) return null;
+  const decorated = await decoratePosts(rows, viewerId);
+  return decorated[0] ?? null;
 }
 
 export async function listTickerPosts(
