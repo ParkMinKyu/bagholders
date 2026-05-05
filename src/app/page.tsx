@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
+import { getCurrentAdmin } from "@/lib/admin-auth";
 import { listFeed } from "@/lib/posts";
 import { FEED_PAGE_SIZE } from "@/lib/feed-config";
 import { FeedList } from "@/components/FeedList";
@@ -7,8 +8,7 @@ import { FeedList } from "@/components/FeedList";
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const user = await getCurrentUser();
-  // 첫 묶음만 SSR. 추가는 FeedList의 "더보기" 버튼이 server action으로 가져옴.
+  const [user, admin] = await Promise.all([getCurrentUser(), getCurrentAdmin()]);
   const posts = await listFeed(user?.id ?? null, FEED_PAGE_SIZE);
 
   return (
@@ -50,7 +50,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <FeedList initial={posts} isAuthed={!!user} />
+      <FeedList initial={posts} isAuthed={!!user} isAdmin={!!admin} />
     </div>
   );
 }

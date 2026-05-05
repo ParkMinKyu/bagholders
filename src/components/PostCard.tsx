@@ -3,6 +3,7 @@ import { type FeedPost } from "@/lib/posts";
 import { fmtTime, fmtKRW, fmtKRWShort, safeImageUrl } from "@/lib/format";
 import { ReactionsRow } from "./ReactionsRow";
 import { ReportButton } from "./ReportButton";
+import { AdminDeleteButton } from "./AdminDeleteButton";
 
 function buyHighMessage(displayPnl: number) {
   if (displayPnl <= -80) return "거의 상폐";
@@ -27,9 +28,11 @@ function sellLowMessage(displayPnl: number) {
 export function PostCard({
   post,
   isAuthed,
+  isAdmin = false,
 }: {
   post: FeedPost;
   isAuthed: boolean;
+  isAdmin?: boolean;
 }) {
   const isBuyHigh = post.kind === "buy_high";
   const rawPnl = Number(post.pnl_pct);
@@ -166,12 +169,17 @@ export function PostCard({
             <span>댓글 달기</span>
           )}
         </Link>
-        <ReportButton
-          targetType="post"
-          targetId={post.id}
-          isAuthed={isAuthed}
-          variant="small"
-        />
+        <div className="flex items-center gap-2">
+          {isAdmin && (
+            <AdminDeleteButton targetType="post" targetId={post.id} />
+          )}
+          <ReportButton
+            targetType="post"
+            targetId={post.id}
+            isAuthed={isAuthed}
+            variant="small"
+          />
+        </div>
       </div>
     </article>
   );

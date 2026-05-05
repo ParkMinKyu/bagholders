@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getCurrentUser } from "@/lib/auth";
+import { getCurrentAdmin } from "@/lib/admin-auth";
 import { getPostById } from "@/lib/posts";
 import { listComments } from "@/lib/comments";
 import { PostCard } from "@/components/PostCard";
@@ -56,9 +57,10 @@ export default async function PostDetailPage({
   if (!Number.isFinite(postId)) notFound();
 
   const viewer = await getCurrentUser();
-  const [post, comments] = await Promise.all([
+  const [post, comments, admin] = await Promise.all([
     getPostById(postId, viewer?.id ?? null),
     listComments(postId, 200),
+    getCurrentAdmin(),
   ]);
 
   if (!post) notFound();
@@ -71,7 +73,7 @@ export default async function PostDetailPage({
         </Link>
       </div>
 
-      <PostCard post={post} isAuthed={!!viewer} />
+      <PostCard post={post} isAuthed={!!viewer} isAdmin={!!admin} />
 
       <section className="panel p-4 space-y-3">
         <div className="flex items-baseline justify-between">

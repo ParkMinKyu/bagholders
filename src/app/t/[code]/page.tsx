@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getCurrentUser } from "@/lib/auth";
+import { getCurrentAdmin } from "@/lib/admin-auth";
 import { badnessScore, listTickerPosts } from "@/lib/posts";
 import { isFavorited } from "@/lib/favorites";
 import { PostCard } from "@/components/PostCard";
@@ -43,9 +44,10 @@ export default async function TickerPage({
   // viewer 결과가 my_reactions 조회에 필요하므로 직렬. 단 getCurrentUser는
   // React.cache라 layout과 dedupe됨.
   const viewer = await getCurrentUser();
-  const [posts, viewerFavorited] = await Promise.all([
+  const [posts, viewerFavorited, admin] = await Promise.all([
     listTickerPosts(tickerCode, viewer?.id ?? null),
     viewer ? isFavorited(viewer.id, tickerCode) : Promise.resolve(false),
+    getCurrentAdmin(),
   ]);
 
   if (posts.length === 0) {
@@ -132,7 +134,12 @@ export default async function TickerPage({
       </div>
       <div className="space-y-3">
         {posts.map((p) => (
-          <PostCard key={p.id} post={p} isAuthed={!!viewer} />
+          <PostCard
+            key={p.id}
+            post={p}
+            isAuthed={!!viewer}
+            isAdmin={!!admin}
+          />
         ))}
       </div>
     </div>

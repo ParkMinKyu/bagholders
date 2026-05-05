@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getCurrentUser } from "@/lib/auth";
+import { getCurrentAdmin } from "@/lib/admin-auth";
 import {
   getBoardPost,
   getMyBoardVote,
@@ -11,6 +12,7 @@ import { categoryLabel } from "@/lib/board-config";
 import { BoardVoteBar } from "@/components/BoardVoteBar";
 import { BoardCommentSection } from "@/components/BoardCommentSection";
 import { ReportButton } from "@/components/ReportButton";
+import { AdminDeleteButton } from "@/components/AdminDeleteButton";
 import { fmtTime, safeImageUrl } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -57,10 +59,11 @@ export default async function BoardDetailPage({
   if (!Number.isFinite(postId)) notFound();
 
   const viewer = await getCurrentUser();
-  const [post, comments, myVote] = await Promise.all([
+  const [post, comments, myVote, admin] = await Promise.all([
     getBoardPost(postId),
     listBoardComments(postId, 200),
     viewer ? getMyBoardVote(postId, viewer.id) : Promise.resolve(null),
+    getCurrentAdmin(),
   ]);
 
   if (!post) notFound();
@@ -140,7 +143,10 @@ export default async function BoardDetailPage({
             initialMy={myVote}
           />
         </div>
-        <div className="flex justify-end">
+        <div className="flex justify-end items-center gap-2">
+          {admin && (
+            <AdminDeleteButton targetType="board_post" targetId={post.id} />
+          )}
           <ReportButton
             targetType="board_post"
             targetId={post.id}

@@ -33,7 +33,7 @@ function getClient(): Client {
   return global.__bagDbClient;
 }
 
-const SCHEMA_VERSION = 10;
+const SCHEMA_VERSION = 11;
 
 async function ensureInit(): Promise<void> {
   if (!global.__bagDbInit) {
@@ -198,6 +198,21 @@ async function ensureInit(): Promise<void> {
         )`,
         `CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status, created_at DESC)`,
         `CREATE INDEX IF NOT EXISTS idx_reports_target ON reports(target_type, target_id)`,
+        // v11: 관리자 이메일 인증 코드 + 관리자 세션 (일반 사용자와 분리).
+        `CREATE TABLE IF NOT EXISTS admin_login_codes (
+          email TEXT PRIMARY KEY,
+          code_hash TEXT NOT NULL,
+          expires_at INTEGER NOT NULL,
+          attempts INTEGER NOT NULL DEFAULT 0,
+          created_at INTEGER NOT NULL
+        )`,
+        `CREATE TABLE IF NOT EXISTS admin_sessions (
+          token TEXT PRIMARY KEY,
+          email TEXT NOT NULL,
+          expires_at INTEGER NOT NULL,
+          created_at INTEGER NOT NULL
+        )`,
+        `CREATE INDEX IF NOT EXISTS idx_admin_sessions_email ON admin_sessions(email)`,
       );
 
       await c.batch(stmts, "deferred");

@@ -9,9 +9,11 @@ import { PostCard } from "./PostCard";
 export function FeedList({
   initial,
   isAuthed,
+  isAdmin = false,
 }: {
   initial: FeedPost[];
   isAuthed: boolean;
+  isAdmin?: boolean;
 }) {
   const [posts, setPosts] = useState<FeedPost[]>(initial);
   // 첫 로드가 page size보다 작으면 더 이상 없음.
@@ -59,7 +61,7 @@ export function FeedList({
     <>
       <div className="space-y-3">
         {posts.map((p) => (
-          <PostCard key={p.id} post={p} isAuthed={isAuthed} />
+          <PostCard key={p.id} post={p} isAuthed={isAuthed} isAdmin={isAdmin} />
         ))}
       </div>
 

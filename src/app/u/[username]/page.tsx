@@ -9,6 +9,7 @@ import {
   getUserRank,
   listUserPosts,
 } from "@/lib/posts";
+import { getCurrentAdmin } from "@/lib/admin-auth";
 import { getFollowCounts, isFollowing } from "@/lib/follows";
 import { getFavoriteCount } from "@/lib/favorites";
 import { listGuestbook } from "@/lib/guestbook";
@@ -55,13 +56,14 @@ export default async function ProfilePage({
   if (!target) notFound();
 
   const isSelf = !!viewer && viewer.id === target.id;
-  const [posts, followCounts, viewerFollowsTarget, favCount, rankInfo, guestbook] = await Promise.all([
+  const [posts, followCounts, viewerFollowsTarget, favCount, rankInfo, guestbook, admin] = await Promise.all([
     listUserPosts(target.id, viewer?.id ?? null),
     getFollowCounts(target.id),
     viewer && !isSelf ? isFollowing(viewer.id, target.id) : Promise.resolve(false),
     getFavoriteCount(target.id),
     getUserRank(target.id),
     listGuestbook(target.id, 100),
+    getCurrentAdmin(),
   ]);
 
   const total = posts.length;
@@ -301,7 +303,12 @@ export default async function ProfilePage({
             </div>
             <div className="space-y-3">
               {posts.map((p) => (
-                <PostCard key={p.id} post={p} isAuthed={!!viewer} />
+                <PostCard
+                  key={p.id}
+                  post={p}
+                  isAuthed={!!viewer}
+                  isAdmin={!!admin}
+                />
               ))}
             </div>
           </div>
