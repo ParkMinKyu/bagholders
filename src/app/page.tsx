@@ -7,6 +7,8 @@ export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const user = await getCurrentUser();
+  // listFeed의 viewerId는 user?.id ?? null. user 결과를 기다린 뒤에야 알 수 있어
+  // 직렬은 불가피하지만, getCurrentUser는 React.cache로 layout과 dedupe됨.
   const posts = await listFeed(user?.id ?? null, 50);
 
   return (
@@ -19,11 +21,12 @@ export default async function HomePage() {
         <div className="mt-4 flex flex-wrap gap-2">
           {user ? (
             <>
-              <Link href="/post/new?kind=buy_high" className="btn-primary">
+              <Link href="/post/new?kind=buy_high" prefetch={false} className="btn-primary">
                 🤡 고점 매수 인증
               </Link>
               <Link
                 href="/post/new?kind=sell_low"
+                prefetch={false}
                 className="btn !border-sky-400 !text-sky-300 hover:!bg-sky-400/10"
               >
                 😭 저점 매도 인증
@@ -31,15 +34,15 @@ export default async function HomePage() {
             </>
           ) : (
             <>
-              <Link href="/signup" className="btn-primary">
+              <Link href="/signup" prefetch={false} className="btn-primary">
                 고점 판독기로 등록
               </Link>
-              <Link href="/login" className="btn">
+              <Link href="/login" prefetch={false} className="btn">
                 로그인
               </Link>
             </>
           )}
-          <Link href="/ranking" className="btn">
+          <Link href="/ranking" prefetch={false} className="btn">
             🏆 명예의 전당
           </Link>
         </div>

@@ -19,10 +19,13 @@ export default async function ProfilePage({
   params: Promise<{ username: string }>;
 }) {
   const { username } = await params;
-  const target = await getUserByUsername(decodeURIComponent(username));
+  // target 조회와 viewer 세션 조회는 독립적이므로 병렬화.
+  const [target, viewer] = await Promise.all([
+    getUserByUsername(decodeURIComponent(username)),
+    getCurrentUser(),
+  ]);
   if (!target) notFound();
 
-  const viewer = await getCurrentUser();
   const posts = await listUserPosts(target.id, viewer?.id ?? null);
 
   const total = posts.length;

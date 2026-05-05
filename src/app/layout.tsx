@@ -19,17 +19,17 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <span className="text-bag-accent">📉</span> 내가사면떨어져
             </Link>
             <nav className="flex items-center gap-2 text-sm">
-              <Link href="/" className="hover:text-bag-accent">피드</Link>
+              <Link href="/" prefetch={false} className="hover:text-bag-accent">피드</Link>
               <span className="text-bag-mute">·</span>
-              <Link href="/ranking" className="hover:text-bag-accent">랭킹</Link>
+              <Link href="/ranking" prefetch={false} className="hover:text-bag-accent">랭킹</Link>
               {user ? (
                 <>
                   <span className="text-bag-mute">·</span>
-                  <Link href="/post/new" className="text-bag-gold hover:text-yellow-400">
+                  <Link href="/post/new" prefetch={false} className="text-bag-gold hover:text-yellow-400">
                     + 인증
                   </Link>
                   <span className="text-bag-mute">·</span>
-                  <Link href={`/u/${user.username}`} className="hover:text-bag-accent">
+                  <Link href={`/u/${user.username}`} prefetch={false} className="hover:text-bag-accent">
                     {user.username}
                   </Link>
                   <form action="/api/auth/logout" method="post" className="inline">
@@ -41,8 +41,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               ) : (
                 <>
                   <span className="text-bag-mute">·</span>
-                  <Link href="/login" className="hover:text-bag-accent">로그인</Link>
-                  <Link href="/signup" className="btn-primary !py-1 !px-2 ml-1 text-xs">
+                  <Link href="/login" prefetch={false} className="hover:text-bag-accent">로그인</Link>
+                  <Link href="/signup" prefetch={false} className="btn-primary !py-1 !px-2 ml-1 text-xs">
                     시작
                   </Link>
                 </>

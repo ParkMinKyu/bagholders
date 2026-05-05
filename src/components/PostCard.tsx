@@ -56,7 +56,11 @@ export function PostCard({
     <article className={`panel p-4 space-y-3 border-l-4 ${accentBorder}`}>
       <header className="flex items-center justify-between text-sm">
         <div className="flex items-center gap-2">
-          <Link href={`/u/${post.username}`} className="font-bold hover:text-bag-accent">
+          <Link
+            href={`/u/${post.username}`}
+            prefetch={false}
+            className="font-bold hover:text-bag-accent"
+          >
             {post.username}
           </Link>
           <span

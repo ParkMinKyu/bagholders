@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
@@ -45,7 +46,7 @@ export async function clearSessionCookie() {
   c.delete(COOKIE_NAME);
 }
 
-export async function getCurrentUser(): Promise<UserRow | null> {
+export const getCurrentUser = cache(async (): Promise<UserRow | null> => {
   const c = await cookies();
   const token = c.get(COOKIE_NAME)?.value;
   if (!token) return null;
@@ -57,7 +58,7 @@ export async function getCurrentUser(): Promise<UserRow | null> {
     [token, Date.now()],
   );
   return row ?? null;
-}
+});
 
 export async function getSessionToken() {
   const c = await cookies();

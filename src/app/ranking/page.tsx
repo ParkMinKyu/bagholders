@@ -7,8 +7,11 @@ export const dynamic = "force-dynamic";
 const MEDALS = ["🥇", "🥈", "🥉"];
 
 export default async function RankingPage() {
-  const viewer = await getCurrentUser();
-  const rows = await getRanking(viewer?.id ?? null, 50);
+  // getRanking는 viewerId를 사용하지 않으므로 병렬 실행 가능.
+  const [viewer, rows] = await Promise.all([
+    getCurrentUser(),
+    getRanking(null, 50),
+  ]);
 
   return (
     <div className="space-y-4">
@@ -36,7 +39,11 @@ export default async function RankingPage() {
               <span className="w-8 text-center text-lg font-black">
                 {MEDALS[i] ?? <span className="text-bag-mute text-sm">{i + 1}</span>}
               </span>
-              <Link href={`/u/${r.username}`} className="font-bold hover:text-bag-accent flex-1">
+              <Link
+                href={`/u/${r.username}`}
+                prefetch={false}
+                className="font-bold hover:text-bag-accent flex-1"
+              >
                 {r.username}
               </Link>
               <span className="text-xs text-bag-mute">인증 {r.post_count}건</span>

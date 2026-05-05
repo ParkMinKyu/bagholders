@@ -1,4 +1,4 @@
-import { dbAll, dbGet, dbRun, type PostRow, type UserRow } from "./db";
+import { dbAll, dbBatch, dbGet, type PostRow, type UserRow } from "./db";
 import { getPrices } from "./upbit";
 
 export {
@@ -124,24 +124,22 @@ async function refreshStale(rows: PostRow[]): Promise<PostRow[]> {
   const prices = await getPrices(tickers);
   if (Object.keys(prices).length === 0) return rows;
 
-  // 티커당 한 번씩만 UPDATE (N posts → N tickers, 보통 ~15회)
-  await Promise.all(
-    Object.entries(prices).map(([ticker, price]) =>
-      dbRun(
-        `UPDATE posts SET
-           last_price = ?,
-           last_priced_at = ?,
-           pnl_pct = CASE WHEN entry_price > 0
-             THEN ((? - entry_price) / entry_price) * 100
-             ELSE 0
-           END
-         WHERE ticker_code = ? AND last_priced_at < ?`,
-        [price, now, price, ticker, now - 1000],
-      ).catch((e) => {
-        console.warn("[refreshStale] update failed:", e);
-      }),
-    ),
-  );
+  // 티커별 UPDATE를 단일 batch로 묶어 1 round-trip으로 압축.
+  await dbBatch(
+    Object.entries(prices).map(([ticker, price]) => ({
+      sql: `UPDATE posts SET
+              last_price = ?,
+              last_priced_at = ?,
+              pnl_pct = CASE WHEN entry_price > 0
+                THEN ((? - entry_price) / entry_price) * 100
+                ELSE 0
+              END
+            WHERE ticker_code = ? AND last_priced_at < ?`,
+      args: [price, now, price, ticker, now - 1000],
+    })),
+  ).catch((e) => {
+    console.warn("[refreshStale] batch update failed:", e);
+  });
 
   const fresh = new Map<number, PostRow>();
   for (const r of stale) {
@@ -169,20 +167,22 @@ async function decoratePosts(
   const ids = refreshed.map((p) => p.id);
   const placeholders = ids.map(() => "?").join(",");
 
-  const counts = await dbAll<{ post_id: number; kind: string; n: number }>(
-    `SELECT post_id, kind, COUNT(*) AS n FROM reactions
-     WHERE post_id IN (${placeholders})
-     GROUP BY post_id, kind`,
-    ids,
-  );
-
-  const myReacts = viewerId
-    ? await dbAll<{ post_id: number; kind: string }>(
-        `SELECT post_id, kind FROM reactions
-         WHERE post_id IN (${placeholders}) AND user_id = ?`,
-        [...ids, viewerId],
-      )
-    : [];
+  // 두 쿼리 병렬 실행 (libsql 클라이언트는 동시 execute 지원).
+  const [counts, myReacts] = await Promise.all([
+    dbAll<{ post_id: number; kind: string; n: number }>(
+      `SELECT post_id, kind, COUNT(*) AS n FROM reactions
+       WHERE post_id IN (${placeholders})
+       GROUP BY post_id, kind`,
+      ids,
+    ),
+    viewerId
+      ? dbAll<{ post_id: number; kind: string }>(
+          `SELECT post_id, kind FROM reactions
+           WHERE post_id IN (${placeholders}) AND user_id = ?`,
+          [...ids, viewerId],
+        )
+      : Promise.resolve([] as { post_id: number; kind: string }[]),
+  ]);
 
   const countMap = new Map<number, Record<string, number>>();
   for (const r of counts) {
@@ -250,23 +250,21 @@ async function refreshAllStaleTickers(): Promise<void> {
   const tickers = stale.map((r) => r.ticker_code);
   const prices = await getPrices(tickers);
   if (Object.keys(prices).length === 0) return;
-  await Promise.all(
-    Object.entries(prices).map(([ticker, price]) =>
-      dbRun(
-        `UPDATE posts SET
-           last_price = ?,
-           last_priced_at = ?,
-           pnl_pct = CASE WHEN entry_price > 0
-             THEN ((? - entry_price) / entry_price) * 100
-             ELSE 0
-           END
-         WHERE ticker_code = ? AND last_priced_at < ?`,
-        [price, now, price, ticker, now - 1000],
-      ).catch((e) => {
-        console.warn("[refreshAllStaleTickers] update failed:", e);
-      }),
-    ),
-  );
+  await dbBatch(
+    Object.entries(prices).map(([ticker, price]) => ({
+      sql: `UPDATE posts SET
+              last_price = ?,
+              last_priced_at = ?,
+              pnl_pct = CASE WHEN entry_price > 0
+                THEN ((? - entry_price) / entry_price) * 100
+                ELSE 0
+              END
+            WHERE ticker_code = ? AND last_priced_at < ?`,
+      args: [price, now, price, ticker, now - 1000],
+    })),
+  ).catch((e) => {
+    console.warn("[refreshAllStaleTickers] batch update failed:", e);
+  });
 }
 
 export async function getRanking(viewerId: number | null, limit = 50): Promise<RankingRow[]> {
