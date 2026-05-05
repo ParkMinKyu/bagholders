@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
+import { listFavorites } from "@/lib/favorites";
 import { CoinSearchPicker } from "@/components/CoinSearchPicker";
 
 export default async function NewPostPage({
@@ -11,6 +12,12 @@ export default async function NewPostPage({
   if (!user) redirect("/login");
   const sp = await searchParams;
   const initialKind = sp.kind === "sell_low" ? "sell_low" : "buy_high";
+  const favs = await listFavorites(user.id, 30);
+  const favoriteCoins = favs.map((f) => ({
+    id: f.ticker_code,
+    symbol: f.ticker_symbol,
+    name: f.ticker_name,
+  }));
 
   return (
     <div className="max-w-xl mx-auto panel p-6">
@@ -24,7 +31,7 @@ export default async function NewPostPage({
         </div>
       )}
       <form method="post" action="/api/posts/create">
-        <CoinSearchPicker initialKind={initialKind} />
+        <CoinSearchPicker initialKind={initialKind} favorites={favoriteCoins} />
       </form>
     </div>
   );

@@ -20,8 +20,10 @@ function fmtKRW(n: number | null) {
 
 export function CoinSearchPicker({
   initialKind = "buy_high",
+  favorites = [],
 }: {
   initialKind?: PostKind;
+  favorites?: Coin[];
 }) {
   const [kind, setKind] = useState<PostKind>(initialKind);
   const [query, setQuery] = useState("");
@@ -132,9 +134,39 @@ export function CoinSearchPicker({
       </div>
 
       <div className="relative" ref={wrapRef}>
-        <label className="text-xs text-bag-mute">코인 검색</label>
+        <div className="flex items-baseline justify-between">
+          <label className="text-xs text-bag-mute">코인 검색</label>
+          {favorites.length > 0 && (
+            <span className="text-[10px] text-bag-mute opacity-70">
+              ★ {favorites.length}개 즐겨찾기
+            </span>
+          )}
+        </div>
+        {favorites.length > 0 && !selected && (
+          <div className="mt-1 flex flex-wrap gap-1.5">
+            {favorites.map((c) => (
+              <button
+                type="button"
+                key={c.id}
+                onClick={() => {
+                  setSelected(c);
+                  setQuery(`${c.name} (${c.symbol.toUpperCase()})`);
+                  setOpen(false);
+                }}
+                className="inline-flex items-center gap-1 rounded-full border border-bag-gold/40 bg-bag-gold/10 px-2.5 py-1 text-xs hover:bg-bag-gold/20 hover:border-bag-gold transition"
+                title={`${c.name} (${c.symbol.toUpperCase()})`}
+              >
+                <span className="text-bag-gold">★</span>
+                <span className="font-mono text-[11px]">{c.symbol.toUpperCase()}</span>
+                <span className="text-bag-mute text-[10px] hidden sm:inline truncate max-w-[80px]">
+                  {c.name}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
         <input
-          className="input mt-1"
+          className="input mt-1.5"
           placeholder="비트코인, btc, doge ..."
           value={selected ? `${selected.name} (${selected.symbol.toUpperCase()})` : query}
           onChange={(e) => {
