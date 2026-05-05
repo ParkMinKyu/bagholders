@@ -4,6 +4,7 @@ import { getCurrentUser } from "./auth";
 import { addComment } from "./comments";
 import { dbGet, dbRun } from "./db";
 import { addGuestbookEntry } from "./guestbook";
+import { listFeed, type FeedPost } from "./posts";
 import { REACTIONS } from "./post-kinds";
 
 export type ReactionToggleResult = {
@@ -64,6 +65,15 @@ export type GuestbookAddResult = {
   ok: boolean;
   error?: string;
 };
+
+// 페이지 사이즈는 lib/feed-config.ts. ("use server" 파일은 async export만 허용)
+const PAGE_SIZE = 20;
+
+export async function loadMoreFeedAction(before: number): Promise<FeedPost[]> {
+  if (!Number.isFinite(before)) return [];
+  const user = await getCurrentUser();
+  return listFeed(user?.id ?? null, PAGE_SIZE, before);
+}
 
 export async function addGuestbookAction(
   ownerId: number,

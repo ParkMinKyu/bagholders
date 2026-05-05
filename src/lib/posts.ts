@@ -216,15 +216,20 @@ async function decoratePosts(
 
 export async function listFeed(
   viewerId: number | null,
-  limit = 50,
-  offset = 0,
+  limit = 20,
+  before?: number,
 ): Promise<FeedPost[]> {
+  // 커서 기반 페이지네이션: created_at < ? (밀리초 ts라 충돌 매우 드뭄).
+  // OFFSET은 큰 데이터셋에서 느려서 사용하지 않음.
+  const where = before != null ? "WHERE p.created_at < ?" : "";
+  const args = before != null ? [before, limit] : [limit];
   const posts = await dbAll<PostRow & { username: string }>(
     `SELECT p.*, u.username FROM posts p
      JOIN users u ON u.id = p.user_id
+     ${where}
      ORDER BY p.created_at DESC
-     LIMIT ? OFFSET ?`,
-    [limit, offset],
+     LIMIT ?`,
+    args,
   );
   return decoratePosts(posts, viewerId);
 }

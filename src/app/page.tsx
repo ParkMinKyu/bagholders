@@ -1,15 +1,15 @@
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { listFeed } from "@/lib/posts";
-import { PostCard } from "@/components/PostCard";
+import { FEED_PAGE_SIZE } from "@/lib/feed-config";
+import { FeedList } from "@/components/FeedList";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const user = await getCurrentUser();
-  // listFeed의 viewerId는 user?.id ?? null. user 결과를 기다린 뒤에야 알 수 있어
-  // 직렬은 불가피하지만, getCurrentUser는 React.cache로 layout과 dedupe됨.
-  const posts = await listFeed(user?.id ?? null, 50);
+  // 첫 묶음만 SSR. 추가는 FeedList의 "더보기" 버튼이 server action으로 가져옴.
+  const posts = await listFeed(user?.id ?? null, FEED_PAGE_SIZE);
 
   return (
     <div className="space-y-4">
@@ -48,17 +48,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {posts.length === 0 ? (
-        <div className="panel p-8 text-center text-bag-mute text-sm">
-          아직 인증된 손실이 없습니다. 첫 번째 고점 판독기가 되어보세요.
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {posts.map((p) => (
-            <PostCard key={p.id} post={p} isAuthed={!!user} />
-          ))}
-        </div>
-      )}
+      <FeedList initial={posts} isAuthed={!!user} />
     </div>
   );
 }
