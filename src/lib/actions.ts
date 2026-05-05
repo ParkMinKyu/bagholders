@@ -61,10 +61,16 @@ export async function addCommentAction(
   return { ok: true };
 }
 
-export type GuestbookAddResult = {
-  ok: boolean;
-  error?: string;
+export type GuestbookEntryDTO = {
+  id: number;
+  author_username: string;
+  body: string;
+  created_at: number;
 };
+
+export type GuestbookAddResult =
+  | { ok: true; entry: GuestbookEntryDTO }
+  | { ok: false; error: string };
 
 // 페이지 사이즈는 lib/feed-config.ts. ("use server" 파일은 async export만 허용)
 const PAGE_SIZE = 20;
@@ -75,6 +81,8 @@ export async function loadMoreFeedAction(before: number): Promise<FeedPost[]> {
   return listFeed(user?.id ?? null, PAGE_SIZE, before);
 }
 
+const GUESTBOOK_MAX_LEN = 500;
+
 export async function addGuestbookAction(
   ownerId: number,
   body: string,
@@ -82,8 +90,17 @@ export async function addGuestbookAction(
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "로그인이 필요합니다." };
   if (!Number.isFinite(ownerId)) return { ok: false, error: "대상이 올바르지 않습니다." };
-  if (!body.trim()) return { ok: false, error: "내용을 입력해주세요." };
-  const r = await addGuestbookEntry(ownerId, user.id, body);
+  const trimmed = body.trim();
+  if (!trimmed) return { ok: false, error: "내용을 입력해주세요." };
+  const r = await addGuestbookEntry(ownerId, user.id, trimmed);
   if (!r) return { ok: false, error: "내용을 입력해주세요." };
-  return { ok: true };
+  return {
+    ok: true,
+    entry: {
+      id: r.id,
+      author_username: user.username,
+      body: trimmed.slice(0, GUESTBOOK_MAX_LEN),
+      created_at: Date.now(),
+    },
+  };
 }

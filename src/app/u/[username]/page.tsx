@@ -13,8 +13,8 @@ import { getFavoriteCount } from "@/lib/favorites";
 import { listGuestbook } from "@/lib/guestbook";
 import { PostCard } from "@/components/PostCard";
 import { TickerSummary } from "@/components/TickerSummary";
-import { GuestbookForm } from "@/components/GuestbookForm";
-import { damageEquivalent, fmtKRWShort, fmtTime, pctHumor } from "@/lib/format";
+import { GuestbookPanel } from "@/components/GuestbookPanel";
+import { damageEquivalent, fmtKRWShort, pctHumor } from "@/lib/format";
 import { getProfileTitle } from "@/lib/title";
 
 export const dynamic = "force-dynamic";
@@ -112,26 +112,40 @@ export default async function ProfilePage({
               </Link>
             )}
           </div>
-          {viewer && !isSelf && (
-            <form action="/api/follow" method="post" className="flex-shrink-0">
-              <input type="hidden" name="username" value={target.username} />
-              <input
-                type="hidden"
-                name="action"
-                value={viewerFollowsTarget ? "unfollow" : "follow"}
-              />
-              <button
-                type="submit"
-                className={
-                  viewerFollowsTarget
-                    ? "btn !py-1 !px-3 text-xs"
-                    : "btn-primary !py-1 !px-3 text-xs"
-                }
-              >
-                {viewerFollowsTarget ? "✓ 팔로잉" : "+ 팔로우"}
-              </button>
-            </form>
-          )}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <GuestbookPanel
+              ownerId={target.id}
+              ownerUsername={target.username}
+              isSelf={isSelf}
+              isAuthed={!!viewer}
+              initial={guestbook.map((g) => ({
+                id: g.id,
+                author_username: g.author_username,
+                body: g.body,
+                created_at: g.created_at,
+              }))}
+            />
+            {viewer && !isSelf && (
+              <form action="/api/follow" method="post">
+                <input type="hidden" name="username" value={target.username} />
+                <input
+                  type="hidden"
+                  name="action"
+                  value={viewerFollowsTarget ? "unfollow" : "follow"}
+                />
+                <button
+                  type="submit"
+                  className={
+                    viewerFollowsTarget
+                      ? "btn !py-1 !px-3 text-xs"
+                      : "btn-primary !py-1 !px-3 text-xs"
+                  }
+                >
+                  {viewerFollowsTarget ? "✓ 팔로잉" : "+ 팔로우"}
+                </button>
+              </form>
+            )}
+          </div>
         </div>
 
         <p className="text-bag-mute text-sm mt-1">
@@ -272,50 +286,6 @@ export default async function ProfilePage({
         </>
       )}
 
-      <section className="panel p-4 space-y-3">
-        <div className="flex items-baseline justify-between">
-          <h2 className="text-xs font-bold text-bag-mute uppercase tracking-wider">
-            ✍️ 방명록 ({guestbook.length})
-          </h2>
-        </div>
-        {viewer ? (
-          <GuestbookForm ownerId={target.id} isSelf={isSelf} />
-        ) : (
-          <div className="text-xs text-bag-mute">
-            <Link href="/login" prefetch={false} className="text-bag-accent hover:underline">
-              로그인
-            </Link>
-            {" "}하면 방명록을 남길 수 있어요.
-          </div>
-        )}
-        {guestbook.length === 0 ? (
-          <div className="text-center text-bag-mute text-xs py-6">
-            아직 아무도 다녀가지 않았습니다.
-          </div>
-        ) : (
-          <ol className="divide-y divide-bag-border -mx-4">
-            {guestbook.map((g) => (
-              <li key={g.id} className="px-4 py-3">
-                <div className="flex items-baseline justify-between">
-                  <Link
-                    href={`/u/${g.author_username}`}
-                    prefetch={false}
-                    className="font-bold text-sm hover:text-bag-accent"
-                  >
-                    @{g.author_username}
-                  </Link>
-                  <span className="text-[11px] text-bag-mute">
-                    {fmtTime(g.created_at)}
-                  </span>
-                </div>
-                <p className="text-sm whitespace-pre-wrap leading-relaxed mt-1">
-                  {g.body}
-                </p>
-              </li>
-            ))}
-          </ol>
-        )}
-      </section>
     </div>
   );
 }
