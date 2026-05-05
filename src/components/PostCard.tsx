@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { REACTIONS, type FeedPost } from "@/lib/posts";
+import { type FeedPost } from "@/lib/posts";
 import { fmtTime, fmtKRW, fmtKRWShort } from "@/lib/format";
+import { ReactionsRow } from "./ReactionsRow";
 
 function buyHighMessage(displayPnl: number) {
   if (displayPnl <= -80) return "거의 상폐";
@@ -132,37 +133,12 @@ export function PostCard({
         )}
       </div>
 
-      <footer className="flex flex-wrap gap-2 pt-2 border-t border-bag-border">
-        {REACTIONS.map((r) => {
-          const count = post.reaction_counts[r.kind] ?? 0;
-          const mine = post.my_reactions.includes(r.kind);
-          return (
-            <form
-              key={r.kind}
-              action="/api/posts/react"
-              method="post"
-              className="inline-flex"
-            >
-              <input type="hidden" name="post_id" value={post.id} />
-              <input type="hidden" name="kind" value={r.kind} />
-              <button
-                type="submit"
-                disabled={!isAuthed}
-                title={isAuthed ? r.label : "로그인 후 누를 수 있습니다"}
-                className={`flex items-center gap-1 px-2 py-1 rounded-md border text-xs transition ${
-                  mine
-                    ? "border-bag-accent bg-bag-accent/15 text-bag-accent"
-                    : "border-bag-border hover:border-bag-accent hover:text-bag-accent"
-                } ${!isAuthed ? "opacity-60 cursor-not-allowed" : ""}`}
-              >
-                <span>{r.emoji}</span>
-                <span>{r.label}</span>
-                {count > 0 && <span className="font-mono">{count}</span>}
-              </button>
-            </form>
-          );
-        })}
-      </footer>
+      <ReactionsRow
+        postId={post.id}
+        isAuthed={isAuthed}
+        initialCounts={post.reaction_counts}
+        initialMine={post.my_reactions}
+      />
     </article>
   );
 }
