@@ -4,8 +4,8 @@ import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 
 export const metadata: Metadata = {
-  title: "내가사면떨어져 — 고점 판독기 명예의 전당",
-  description: "내가 사면 떨어지고 내가 팔면 오른다. 자조적 매매 인증 SNS.",
+  title: "bagholders. — 손실 인증 커뮤니티",
+  description: "고점매수, 저점매도. 인증으로 남기는 자조 SNS.",
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -15,9 +15,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className="min-h-screen flex flex-col">
         <header className="border-b border-bag-border bg-black/40 backdrop-blur sticky top-0 z-10">
           <div className="mx-auto max-w-3xl px-4 py-3 flex items-center gap-2">
-            <Link href="/" className="font-black text-lg tracking-tight flex-shrink-0">
-              <span className="text-bag-accent">📉</span>
-              <span className="hidden sm:inline ml-1">내가사면떨어져</span>
+            <Link
+              href="/"
+              className="font-black text-lg tracking-tight flex-shrink-0 lowercase"
+            >
+              <span className="hidden sm:inline">bagholders</span>
+              <span className="sm:hidden">bag</span>
+              <span className="text-bag-accent">.</span>
             </Link>
             <form
               action="/search"
@@ -79,7 +83,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               가격은 사용자가 직접 입력한 값이며 실제 시세와 다를 수 있습니다. 투자 판단의 책임은
               본인에게 있습니다.
             </p>
-            <p className="opacity-70">© {new Date().getFullYear()} 내가사면떨어져 · for the lulz</p>
+            <p className="opacity-70">© {new Date().getFullYear()} bagholders. · for the lulz</p>
           </div>
         </footer>
       </body>
