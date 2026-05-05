@@ -10,6 +10,7 @@ import {
 import { categoryLabel } from "@/lib/board-config";
 import { BoardVoteBar } from "@/components/BoardVoteBar";
 import { BoardCommentSection } from "@/components/BoardCommentSection";
+import { ReportButton } from "@/components/ReportButton";
 import { fmtTime } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -133,6 +134,14 @@ export default async function BoardDetailPage({
             initialUp={post.upvotes}
             initialDown={post.downvotes}
             initialMy={myVote}
+          />
+        </div>
+        <div className="flex justify-end">
+          <ReportButton
+            targetType="board_post"
+            targetId={post.id}
+            isAuthed={!!viewer}
+            variant="small"
           />
         </div>
       </article>

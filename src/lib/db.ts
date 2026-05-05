@@ -33,7 +33,7 @@ function getClient(): Client {
   return global.__bagDbClient;
 }
 
-const SCHEMA_VERSION = 9;
+const SCHEMA_VERSION = 10;
 
 async function ensureInit(): Promise<void> {
   if (!global.__bagDbInit) {
@@ -184,6 +184,20 @@ async function ensureInit(): Promise<void> {
           created_at INTEGER NOT NULL
         )`,
         `CREATE INDEX IF NOT EXISTS idx_board_comments_post ON board_comments(post_id, created_at ASC)`,
+        // v10: 신고 테이블 (additive). 같은 유저가 같은 대상 중복 신고 차단.
+        `CREATE TABLE IF NOT EXISTS reports (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          reporter_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          target_type TEXT NOT NULL,
+          target_id INTEGER NOT NULL,
+          reason TEXT NOT NULL,
+          body TEXT,
+          status TEXT NOT NULL DEFAULT 'pending',
+          created_at INTEGER NOT NULL,
+          UNIQUE(reporter_id, target_type, target_id)
+        )`,
+        `CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status, created_at DESC)`,
+        `CREATE INDEX IF NOT EXISTS idx_reports_target ON reports(target_type, target_id)`,
       );
 
       await c.batch(stmts, "deferred");

@@ -311,11 +311,11 @@ export default async function ProfilePage({
       {isSelf && (
         <div className="text-center pt-4">
           <Link
-            href="/account/withdraw"
+            href="/account"
             prefetch={false}
             className="text-[11px] text-bag-mute hover:text-bag-accent opacity-70"
           >
-            회원 탈퇴
+            ⚙️ 계정 설정
           </Link>
         </div>
       )}

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { type FeedPost } from "@/lib/posts";
 import { fmtTime, fmtKRW, fmtKRWShort } from "@/lib/format";
 import { ReactionsRow } from "./ReactionsRow";
+import { ReportButton } from "./ReportButton";
 
 function buyHighMessage(displayPnl: number) {
   if (displayPnl <= -80) return "거의 상폐";
@@ -146,20 +147,28 @@ export function PostCard({
         initialMine={post.my_reactions}
       />
 
-      <Link
-        href={`/p/${post.id}`}
-        prefetch={false}
-        className="text-xs text-bag-mute hover:text-bag-accent inline-flex items-center gap-1 -mt-1"
-      >
-        💬{" "}
-        {post.comment_count > 0 ? (
-          <span>
-            <span className="font-mono">{post.comment_count}</span>개의 댓글
-          </span>
-        ) : (
-          <span>댓글 달기</span>
-        )}
-      </Link>
+      <div className="flex items-center justify-between -mt-1">
+        <Link
+          href={`/p/${post.id}`}
+          prefetch={false}
+          className="text-xs text-bag-mute hover:text-bag-accent inline-flex items-center gap-1"
+        >
+          💬{" "}
+          {post.comment_count > 0 ? (
+            <span>
+              <span className="font-mono">{post.comment_count}</span>개의 댓글
+            </span>
+          ) : (
+            <span>댓글 달기</span>
+          )}
+        </Link>
+        <ReportButton
+          targetType="post"
+          targetId={post.id}
+          isAuthed={isAuthed}
+          variant="small"
+        />
+      </div>
     </article>
   );
 }

@@ -11,6 +11,13 @@ import { dbGet, dbRun } from "./db";
 import { addGuestbookEntry } from "./guestbook";
 import { listFeed, type FeedPost } from "./posts";
 import { REACTIONS } from "./post-kinds";
+import {
+  createReport,
+  REPORT_REASONS,
+  REPORT_TARGETS,
+  type ReportReason,
+  type ReportTarget,
+} from "./reports";
 
 export type ReactionToggleResult = {
   ok: boolean;
@@ -175,4 +182,34 @@ export async function addBoardCommentAction(
       created_at: Date.now(),
     },
   };
+}
+
+export type ReportResult =
+  | { ok: true }
+  | { ok: false; error: string };
+
+export async function reportAction(
+  targetType: ReportTarget,
+  targetId: number,
+  reason: ReportReason,
+  body: string | null,
+): Promise<ReportResult> {
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "로그인이 필요합니다." };
+  if (!REPORT_TARGETS.includes(targetType)) return { ok: false, error: "잘못된 대상입니다." };
+  if (!Number.isFinite(targetId)) return { ok: false, error: "잘못된 대상입니다." };
+  if (!REPORT_REASONS.some((r) => r.key === reason)) {
+    return { ok: false, error: "사유를 선택해주세요." };
+  }
+  const r = await createReport({
+    reporterId: user.id,
+    targetType,
+    targetId,
+    reason,
+    body,
+  });
+  if (!r.ok) {
+    return { ok: false, error: r.duplicate ? "이미 신고한 항목입니다." : "신고 실패" };
+  }
+  return { ok: true };
 }
