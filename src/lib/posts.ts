@@ -464,7 +464,8 @@ export type TickerSearchHit = {
 };
 
 // SQLite/libSQL: LIKE escape를 위해 백슬래시 사용 (% 와 _ 만).
-function likePattern(q: string): string {
+// 테스트 목적으로 export — wildcard injection 방어 검증용.
+export function likePattern(q: string): string {
   const escaped = q.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
   return `%${escaped}%`;
 }
