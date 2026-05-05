@@ -43,9 +43,11 @@ export function ReactionsRow({
     if (!isAuthed) return;
     startTransition(async () => {
       applyOptimistic(kind);
-      const res = await toggleReactionAction(postId, kind);
-      // 미인증/오류 등 서버가 거절했으면 데이터 다시 동기화.
-      if (!res.ok) router.refresh();
+      await toggleReactionAction(postId, kind);
+      // 액션이 성공해도 부모(RSC) props를 새로 받아야 useOptimistic이
+      // 갱신된 카운트를 기준으로 삼음. 안 부르면 transition 종료 시
+      // 이전 props 값(카운트 0)으로 되돌아가 "1 → 0"으로 깜빡임.
+      router.refresh();
     });
   }
 
