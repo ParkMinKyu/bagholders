@@ -43,14 +43,18 @@ export async function POST(req: Request) {
   }
   await recordFailure(key, REQUEST_OPTS);
 
-  // 이메일이 화이트리스트에 없어도 동일 응답 (열거 방지).
-  // 실제로는 코드 생성/메일을 안 보내고 verify 단계에서도 실패하게 함.
+  // 화이트리스트 미포함이어도 같은 페이지(/admin/verify)로 리다이렉트해
+  // 응답·동작 차이로 admin 이메일이 식별되지 않게 함 (열거 방지).
+  // 실제 인증은 /api/admin/verify 에서 항상 "코드 불일치"로 실패.
+  const verifyUrl = new URL("/admin/verify", req.url);
+  verifyUrl.searchParams.set("email", emailRaw);
+
   if (!adminEmailAllowed(emailRaw)) {
     audit(req, {
       type: "login.fail",
       meta: { kind: "admin_request_unallowed", email: emailRaw },
     });
-    return back({ email: emailRaw });
+    return NextResponse.redirect(verifyUrl, { status: 303 });
   }
 
   const code = await createLoginCode(emailRaw);
@@ -73,8 +77,5 @@ export async function POST(req: Request) {
     meta: { kind: "admin_request", email: emailRaw, via: result.via },
   });
 
-  // 성공 시 코드 입력 페이지로 이동.
-  const verifyUrl = new URL("/admin/verify", req.url);
-  verifyUrl.searchParams.set("email", emailRaw);
   return NextResponse.redirect(verifyUrl, { status: 303 });
 }
