@@ -4,6 +4,7 @@ import { getCurrentAdmin } from "@/lib/admin-auth";
 
 export const dynamic = "force-dynamic";
 
+// build marker: 030ff9f deploy
 export const metadata: Metadata = {
   title: "관리자 로그인",
   robots: { index: false, follow: false },
