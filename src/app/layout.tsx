@@ -14,20 +14,27 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="ko">
       <body className="min-h-screen flex flex-col">
         <header className="border-b border-bag-border bg-black/40 backdrop-blur sticky top-0 z-10">
-          <div className="mx-auto max-w-3xl px-4 py-3 flex items-center justify-between">
-            <Link href="/" className="font-black text-lg tracking-tight">
-              <span className="text-bag-accent">📉</span> 내가사면떨어져
+          <div className="mx-auto max-w-3xl px-4 py-3 flex items-center gap-2">
+            <Link href="/" className="font-black text-lg tracking-tight flex-shrink-0">
+              <span className="text-bag-accent">📉</span>
+              <span className="hidden sm:inline ml-1">내가사면떨어져</span>
             </Link>
-            <nav className="flex items-center gap-2 text-sm">
-              <Link
-                href="/search"
-                prefetch={false}
-                aria-label="검색"
-                className="hover:text-bag-accent"
-              >
-                🔎<span className="hidden sm:inline ml-0.5">검색</span>
-              </Link>
-              <span className="text-bag-mute">·</span>
+            <form
+              action="/search"
+              method="get"
+              role="search"
+              className="flex-1 min-w-0 max-w-xs"
+            >
+              <input
+                type="search"
+                name="q"
+                placeholder="🔎 사용자/코인 검색"
+                aria-label="사용자 또는 코인 검색"
+                maxLength={50}
+                className="input !py-1 !px-2 text-xs w-full"
+              />
+            </form>
+            <nav className="flex items-center gap-1.5 text-xs sm:text-sm flex-shrink-0">
               <Link href="/" prefetch={false} className="hover:text-bag-accent">피드</Link>
               <span className="text-bag-mute">·</span>
               <Link href="/ranking" prefetch={false} className="hover:text-bag-accent">랭킹</Link>
