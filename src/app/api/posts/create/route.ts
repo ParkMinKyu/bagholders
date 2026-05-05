@@ -39,12 +39,12 @@ export async function POST(req: Request) {
   }
 
   const livePrice = await getPrice(tickerCode);
-  if (!livePrice || livePrice <= 0) {
-    return back("현재가를 가져올 수 없습니다. 잠시 후 다시 시도해주세요.");
-  }
-
-  const pnl = calcPnlPct(entryPrice, livePrice);
   const now = Date.now();
+
+  // 시세를 못 가져와도 글은 작성 가능 — 다음 피드 로드 시 lazy refresh가 갱신.
+  const lastPrice = livePrice && livePrice > 0 ? livePrice : entryPrice;
+  const lastPricedAt = livePrice && livePrice > 0 ? now : 0;
+  const pnl = calcPnlPct(entryPrice, lastPrice);
 
   await dbRun(
     `INSERT INTO posts
@@ -58,8 +58,8 @@ export async function POST(req: Request) {
       tickerSymbol,
       tickerName,
       entryPrice,
-      livePrice,
-      now,
+      lastPrice,
+      lastPricedAt,
       quantity,
       comment,
       pnl,
