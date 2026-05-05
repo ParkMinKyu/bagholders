@@ -379,6 +379,41 @@ export async function getUserByUsername(username: string): Promise<UserRow | nul
   return row ?? null;
 }
 
+export type UserRankInfo = {
+  rank: number; // 1부터 시작
+  total: number; // 인증 1건 이상 가진 사용자 수
+  badness_avg: number;
+};
+
+export async function getUserRank(userId: number): Promise<UserRankInfo | null> {
+  // CTE로 모든 사용자의 평균 망함도를 계산한 뒤 본인보다 높은 사람 수 + 1 = 랭크.
+  // 인증이 없으면 score CTE에 안 들어가므로 결과 null.
+  const row = await dbGet<{
+    rank: number;
+    total: number;
+    badness: number | null;
+  }>(
+    `WITH scores AS (
+       SELECT
+         user_id,
+         AVG(CASE WHEN kind='buy_high' THEN -pnl_pct ELSE pnl_pct END) AS badness
+       FROM posts
+       GROUP BY user_id
+     )
+     SELECT
+       (SELECT COUNT(*) FROM scores WHERE badness > (SELECT badness FROM scores WHERE user_id = ?)) + 1 AS rank,
+       (SELECT COUNT(*) FROM scores) AS total,
+       (SELECT badness FROM scores WHERE user_id = ?) AS badness`,
+    [userId, userId],
+  );
+  if (!row || row.badness == null) return null;
+  return {
+    rank: Number(row.rank),
+    total: Number(row.total),
+    badness_avg: Number(row.badness),
+  };
+}
+
 export type UserSearchHit = {
   id: number;
   username: string;

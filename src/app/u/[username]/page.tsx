@@ -5,6 +5,7 @@ import {
   aggregateByTicker,
   badnessScore,
   getUserByUsername,
+  getUserRank,
   listUserPosts,
 } from "@/lib/posts";
 import { getFollowCounts, isFollowing } from "@/lib/follows";
@@ -30,11 +31,12 @@ export default async function ProfilePage({
   if (!target) notFound();
 
   const isSelf = !!viewer && viewer.id === target.id;
-  const [posts, followCounts, viewerFollowsTarget, favCount] = await Promise.all([
+  const [posts, followCounts, viewerFollowsTarget, favCount, rankInfo] = await Promise.all([
     listUserPosts(target.id, viewer?.id ?? null),
     getFollowCounts(target.id),
     viewer && !isSelf ? isFollowing(viewer.id, target.id) : Promise.resolve(false),
     getFavoriteCount(target.id),
+    getUserRank(target.id),
   ]);
 
   const total = posts.length;
@@ -78,6 +80,34 @@ export default async function ProfilePage({
             <span className="text-sm font-bold text-bag-gold">
               {title.emoji} {title.text}
             </span>
+            {rankInfo && (
+              <Link
+                href="/ranking"
+                prefetch={false}
+                title={`평균 망함도 ${rankInfo.badness_avg >= 0 ? "+" : ""}${rankInfo.badness_avg.toFixed(2)}`}
+                className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-bold transition ${
+                  rankInfo.rank <= 3
+                    ? "border-bag-gold bg-bag-gold/10 text-bag-gold hover:bg-bag-gold/20"
+                    : rankInfo.rank <= 10
+                      ? "border-bag-accent/60 bg-bag-accent/10 text-bag-accent hover:bg-bag-accent/20"
+                      : "border-bag-border bg-black/30 text-bag-mute hover:text-white"
+                }`}
+              >
+                <span>
+                  {rankInfo.rank === 1
+                    ? "🥇"
+                    : rankInfo.rank === 2
+                      ? "🥈"
+                      : rankInfo.rank === 3
+                        ? "🥉"
+                        : "🏆"}
+                </span>
+                <span>
+                  {rankInfo.rank}위
+                  <span className="opacity-70 font-normal">/{rankInfo.total}</span>
+                </span>
+              </Link>
+            )}
           </div>
           {viewer && !isSelf && (
             <form action="/api/follow" method="post" className="flex-shrink-0">
