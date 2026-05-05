@@ -54,9 +54,7 @@ function TickerRow({ stat }: { stat: TickerStat }) {
         <SideRow label="😭 매도" tone="sell" side={stat.sell} />
       )}
 
-      {stat.has_any_qty && stat.buy.count > 0 && stat.sell.count > 0 && (
-        <DamageRow krw={stat.net_pnl_krw} />
-      )}
+      {stat.has_any_qty && <DamageRow krw={stat.net_pnl_krw} />}
     </div>
   );
 }
