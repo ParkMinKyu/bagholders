@@ -1,7 +1,6 @@
 "use client";
 
-import { useOptimistic, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
 import { REACTIONS } from "@/lib/post-kinds";
 import { toggleReactionAction } from "@/lib/actions";
 
@@ -21,33 +20,36 @@ export function ReactionsRow({
   initialCounts: Record<string, number>;
   initialMine: string[];
 }) {
-  const router = useRouter();
   const [, startTransition] = useTransition();
-
-  const [state, applyOptimistic] = useOptimistic<State, string>(
-    { counts: initialCounts, mine: initialMine },
-    (prev, kind) => {
-      const isMine = prev.mine.includes(kind);
-      const delta = isMine ? -1 : 1;
-      return {
-        counts: {
-          ...prev.counts,
-          [kind]: Math.max(0, (prev.counts[kind] ?? 0) + delta),
-        },
-        mine: isMine ? prev.mine.filter((k) => k !== kind) : [...prev.mine, kind],
-      };
-    },
-  );
+  // FeedList가 클라 state로 posts를 들고 있어 router.refresh()로 RSC를 다시 받아도
+  // 이 컴포넌트의 props는 갱신 안 됨. 그래서 useOptimistic 대신 plain useState로
+  // 클라 측 진실의 원천을 유지. 서버 액션이 거절하면 롤백.
+  const [state, setState] = useState<State>({
+    counts: initialCounts,
+    mine: initialMine,
+  });
 
   function handle(kind: string) {
     if (!isAuthed) return;
+    const wasMine = state.mine.includes(kind);
+    const delta = wasMine ? -1 : 1;
+    const next: State = {
+      counts: {
+        ...state.counts,
+        [kind]: Math.max(0, (state.counts[kind] ?? 0) + delta),
+      },
+      mine: wasMine ? state.mine.filter((k) => k !== kind) : [...state.mine, kind],
+    };
+    const prev = state;
+    setState(next);
+
     startTransition(async () => {
-      applyOptimistic(kind);
-      await toggleReactionAction(postId, kind);
-      // 액션이 성공해도 부모(RSC) props를 새로 받아야 useOptimistic이
-      // 갱신된 카운트를 기준으로 삼음. 안 부르면 transition 종료 시
-      // 이전 props 값(카운트 0)으로 되돌아가 "1 → 0"으로 깜빡임.
-      router.refresh();
+      try {
+        const res = await toggleReactionAction(postId, kind);
+        if (!res.ok) setState(prev); // 미인증 등 거절 시 롤백
+      } catch {
+        setState(prev);
+      }
     });
   }
 
