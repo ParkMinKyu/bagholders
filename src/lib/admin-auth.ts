@@ -7,12 +7,32 @@ import { dbGet, dbRun } from "./db";
 // ─── 환경 ──────────────────────────────────────────────────────
 
 export function adminEmailAllowed(email: string): boolean {
-  const list = (process.env.ADMIN_EMAILS ?? "")
+  const raw = process.env.ADMIN_EMAILS;
+  const list = (raw ?? "")
     .split(",")
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean);
+  const target = email.trim().toLowerCase();
+  const matched = list.includes(target);
+
+  // 진단용: env가 있는지 / 길이 / 매칭 여부만. 값 자체는 노출 안 함.
+  if (!matched) {
+    console.log(
+      "[debug/admin-allowed]",
+      JSON.stringify({
+        envDefined: raw !== undefined,
+        envLen: raw?.length ?? 0,
+        listCount: list.length,
+        targetLen: target.length,
+        // 보안상 첫·마지막 글자만 (눈으로 일치 확인용)
+        targetSig: target ? `${target[0]}…${target[target.length - 1]}` : "",
+        listSigs: list.map((e) => `${e[0]}…${e[e.length - 1]}`),
+      }),
+    );
+  }
+
   if (list.length === 0) return false;
-  return list.includes(email.trim().toLowerCase());
+  return matched;
 }
 
 // ─── 인증 코드 ─────────────────────────────────────────────────
