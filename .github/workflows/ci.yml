@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - claude/initial-setup-hnYWY
+      - claude/review-implementation-Zuge1
+  pull_request:
+
+# 동일 브랜치 연속 push 시 이전 워크플로 자동 취소.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Tests + Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Run security tests
+        run: npm test
+
+      - name: Build (Next.js)
+        run: npx next build
+        env:
+          # 빌드 시 외부 서비스 호출 방지용 placeholder.
+          # 실제 운영 ENV는 Vercel에서 주입.
+          NEXT_PUBLIC_SITE_URL: https://example.invalid
+
+  audit:
+    name: npm audit (high+ severity)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # PR/푸시 차단까지 하진 않고 가시성만 확보 (false positive 잦음).
+    continue-on-error: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install (skip scripts to avoid arbitrary code from deps)
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Audit production dependencies
+        run: npm audit --audit-level=high --omit=dev
