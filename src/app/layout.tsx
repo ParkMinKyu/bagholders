@@ -19,6 +19,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <span className="text-bag-accent">📉</span> 내가사면떨어져
             </Link>
             <nav className="flex items-center gap-2 text-sm">
+              <Link
+                href="/search"
+                prefetch={false}
+                aria-label="검색"
+                className="hover:text-bag-accent"
+              >
+                🔎<span className="hidden sm:inline ml-0.5">검색</span>
+              </Link>
+              <span className="text-bag-mute">·</span>
               <Link href="/" prefetch={false} className="hover:text-bag-accent">피드</Link>
               <span className="text-bag-mute">·</span>
               <Link href="/ranking" prefetch={false} className="hover:text-bag-accent">랭킹</Link>

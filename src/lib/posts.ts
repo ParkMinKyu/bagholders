@@ -304,3 +304,111 @@ export async function getUserByUsername(username: string): Promise<UserRow | nul
   const row = await dbGet<UserRow>("SELECT * FROM users WHERE username = ?", [username]);
   return row ?? null;
 }
+
+export type UserSearchHit = {
+  id: number;
+  username: string;
+  post_count: number;
+  badness_avg: number;
+};
+
+export type TickerSearchHit = {
+  ticker_code: string;
+  ticker_symbol: string;
+  ticker_name: string;
+  post_count: number;
+  buy_count: number;
+  sell_count: number;
+  last_price: number;
+  last_priced_at: number;
+};
+
+// SQLite/libSQL: LIKE escape를 위해 백슬래시 사용 (% 와 _ 만).
+function likePattern(q: string): string {
+  const escaped = q.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+  return `%${escaped}%`;
+}
+
+export async function searchUsers(q: string, limit = 10): Promise<UserSearchHit[]> {
+  const trimmed = q.trim();
+  if (trimmed.length === 0) return [];
+  const pat = likePattern(trimmed);
+  const rows = await dbAll<{
+    id: number;
+    username: string;
+    post_count: number;
+    badness_avg: number | null;
+  }>(
+    `SELECT
+       u.id AS id,
+       u.username AS username,
+       COUNT(p.id) AS post_count,
+       AVG(CASE WHEN p.kind = 'buy_high' THEN -p.pnl_pct ELSE p.pnl_pct END) AS badness_avg
+     FROM users u
+     LEFT JOIN posts p ON p.user_id = u.id
+     WHERE u.username LIKE ? ESCAPE '\\'
+     GROUP BY u.id, u.username
+     ORDER BY
+       CASE WHEN LOWER(u.username) = LOWER(?) THEN 0
+            WHEN LOWER(u.username) LIKE LOWER(?) THEN 1
+            ELSE 2 END,
+       post_count DESC,
+       u.id ASC
+     LIMIT ?`,
+    [pat, trimmed, `${trimmed.toLowerCase()}%`, limit],
+  );
+  return rows.map((r) => ({
+    id: Number(r.id),
+    username: r.username,
+    post_count: Number(r.post_count),
+    badness_avg: r.badness_avg == null ? 0 : Number(r.badness_avg),
+  }));
+}
+
+export async function searchTickers(q: string, limit = 10): Promise<TickerSearchHit[]> {
+  const trimmed = q.trim();
+  if (trimmed.length === 0) return [];
+  const pat = likePattern(trimmed);
+  const rows = await dbAll<{
+    ticker_code: string;
+    ticker_symbol: string;
+    ticker_name: string;
+    post_count: number;
+    buy_count: number;
+    sell_count: number;
+    last_price: number;
+    last_priced_at: number;
+  }>(
+    `SELECT
+       ticker_code,
+       ticker_symbol,
+       ticker_name,
+       COUNT(*) AS post_count,
+       SUM(CASE WHEN kind = 'buy_high' THEN 1 ELSE 0 END) AS buy_count,
+       SUM(CASE WHEN kind = 'sell_low' THEN 1 ELSE 0 END) AS sell_count,
+       MAX(last_price) AS last_price,
+       MAX(last_priced_at) AS last_priced_at
+     FROM posts
+     WHERE ticker_symbol LIKE ? ESCAPE '\\'
+        OR ticker_name LIKE ? ESCAPE '\\'
+        OR ticker_code LIKE ? ESCAPE '\\'
+     GROUP BY ticker_code, ticker_symbol, ticker_name
+     ORDER BY
+       CASE WHEN LOWER(ticker_symbol) = LOWER(?) THEN 0
+            WHEN LOWER(ticker_symbol) LIKE LOWER(?) THEN 1
+            ELSE 2 END,
+       post_count DESC
+     LIMIT ?`,
+    [pat, pat, pat, trimmed, `${trimmed.toLowerCase()}%`, limit],
+  );
+  return rows.map((r) => ({
+    ticker_code: r.ticker_code,
+    ticker_symbol: r.ticker_symbol,
+    ticker_name: r.ticker_name,
+    post_count: Number(r.post_count),
+    buy_count: Number(r.buy_count),
+    sell_count: Number(r.sell_count),
+    last_price: Number(r.last_price),
+    last_priced_at: Number(r.last_priced_at),
+  }));
+}
