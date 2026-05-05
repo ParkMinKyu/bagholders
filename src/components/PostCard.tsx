@@ -28,23 +28,23 @@ function fmtKRWShort(n: number) {
   return Math.round(n).toLocaleString("ko-KR");
 }
 
-function buyHighMessage(pnl: number) {
-  if (pnl <= -80) return "거의 상폐";
-  if (pnl <= -50) return "반토막+α";
-  if (pnl <= -30) return "삼가 고인의";
-  if (pnl <= -10) return "물렸음";
-  if (pnl < 0) return "눈물 한 방울";
-  if (pnl === 0) return "본전";
+function buyHighMessage(displayPnl: number) {
+  if (displayPnl <= -80) return "거의 상폐";
+  if (displayPnl <= -50) return "반토막+α";
+  if (displayPnl <= -30) return "삼가 고인의";
+  if (displayPnl <= -10) return "물렸음";
+  if (displayPnl < 0) return "눈물 한 방울";
+  if (displayPnl === 0) return "본전";
   return "운빨 익절";
 }
 
-function sellLowMessage(pnl: number) {
-  if (pnl >= 200) return "n배 가즈아 반대 방향";
-  if (pnl >= 100) return "팔자마자 더블";
-  if (pnl >= 50) return "팔자마자 떡상";
-  if (pnl >= 20) return "조금만 참을걸";
-  if (pnl > 0) return "약손해";
-  if (pnl === 0) return "본전";
+function sellLowMessage(displayPnl: number) {
+  if (displayPnl <= -200) return "n배 가즈아 반대 방향";
+  if (displayPnl <= -100) return "팔자마자 더블";
+  if (displayPnl <= -50) return "팔자마자 떡상";
+  if (displayPnl <= -20) return "조금만 참을걸";
+  if (displayPnl < 0) return "약손해";
+  if (displayPnl === 0) return "본전";
   return "잘 팔았네";
 }
 
@@ -56,31 +56,27 @@ export function PostCard({
   isAuthed: boolean;
 }) {
   const isBuyHigh = post.kind === "buy_high";
-  const pnl = Number(post.pnl_pct);
+  const rawPnl = Number(post.pnl_pct);
   const entry = Number(post.entry_price);
   const last = Number(post.last_price);
   const qty = post.quantity == null ? null : Number(post.quantity);
 
-  const lossKRW =
-    qty !== null && isFinite(qty)
-      ? isBuyHigh
-        ? (last - entry) * qty
-        : (last - entry) * qty
-      : null;
+  // 저점매도는 매도가 > 현재가가 잘 판 케이스(이익).
+  // 두 모드 모두 음수 = 망함, 양수 = 이익으로 통일해서 표시.
+  const displayPnl = isBuyHigh ? rawPnl : -rawPnl;
+  const rawKRW = qty !== null && isFinite(qty) ? (last - entry) * qty : null;
+  const displayKRW = rawKRW === null ? null : isBuyHigh ? rawKRW : -rawKRW;
 
   const accentBorder = isBuyHigh ? "border-bag-accent/40" : "border-sky-400/40";
-  const pnlClass = isBuyHigh
-    ? pnl <= -50
+  const pnlClass =
+    displayPnl <= -50
       ? "text-red-500"
-      : pnl < 0
+      : displayPnl < 0
         ? "text-red-400"
-        : "text-emerald-400"
-    : pnl >= 50
-      ? "text-sky-300"
-      : pnl > 0
-        ? "text-sky-400"
-        : "text-bag-mute";
-  const message = isBuyHigh ? buyHighMessage(pnl) : sellLowMessage(pnl);
+        : displayPnl > 0
+          ? "text-emerald-400"
+          : "text-bag-mute";
+  const message = isBuyHigh ? buyHighMessage(displayPnl) : sellLowMessage(displayPnl);
 
   return (
     <article className={`panel p-4 space-y-3 border-l-4 ${accentBorder}`}>
@@ -111,8 +107,8 @@ export function PostCard({
             </span>
           </div>
           <div className={`text-2xl font-black ${pnlClass}`}>
-            {pnl >= 0 ? "+" : ""}
-            {pnl.toFixed(2)}%
+            {displayPnl >= 0 ? "+" : ""}
+            {displayPnl.toFixed(2)}%
             <span className="text-xs font-medium ml-1 opacity-75">{message}</span>
           </div>
         </div>
@@ -126,11 +122,11 @@ export function PostCard({
             현재가 <span className="text-white font-mono">{fmtKRW(last)}</span>
           </span>
           {qty !== null && <span>· 수량 {qty.toLocaleString("ko-KR")}</span>}
-          {lossKRW !== null && (
+          {displayKRW !== null && (
             <span className={pnlClass}>
               · {isBuyHigh ? "평가손익" : "기회손익"}{" "}
-              {lossKRW >= 0 ? "+" : "-"}
-              {fmtKRWShort(Math.abs(lossKRW))}
+              {displayKRW >= 0 ? "+" : "-"}
+              {fmtKRWShort(Math.abs(displayKRW))}
             </span>
           )}
           <span className="opacity-50 ml-auto">
