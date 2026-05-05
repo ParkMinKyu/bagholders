@@ -73,5 +73,8 @@ export async function POST(req: Request) {
     meta: { kind: "admin_request", email: emailRaw, via: result.via },
   });
 
-  return back({ email: emailRaw, sent: "1" });
+  // 성공 시 코드 입력 페이지로 이동.
+  const verifyUrl = new URL("/admin/verify", req.url);
+  verifyUrl.searchParams.set("email", emailRaw);
+  return NextResponse.redirect(verifyUrl, { status: 303 });
 }
