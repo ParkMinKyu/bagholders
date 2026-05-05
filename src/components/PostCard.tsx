@@ -114,6 +114,22 @@ export function PostCard({
         {post.comment && (
           <p className="mt-3 text-sm whitespace-pre-wrap leading-relaxed">{post.comment}</p>
         )}
+        {post.image_url && (
+          <a
+            href={post.image_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-3 block rounded-md overflow-hidden border border-bag-border bg-black/30"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={post.image_url}
+              alt="인증 이미지"
+              loading="lazy"
+              className="w-full max-h-96 object-contain"
+            />
+          </a>
+        )}
       </div>
 
       <footer className="flex flex-wrap gap-2 pt-2 border-t border-bag-border">

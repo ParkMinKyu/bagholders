@@ -3,6 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import { POST_KINDS, type PostKind } from "@/lib/post-kinds";
 
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5MB
+const ALLOWED_IMAGE_MIMES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+];
+
 type Coin = {
   id: string;
   symbol: string;
@@ -33,8 +41,11 @@ export function CoinSearchPicker({
   const [selected, setSelected] = useState<Coin | null>(null);
   const [livePrice, setLivePrice] = useState<number | null>(null);
   const [pricedAt, setPricedAt] = useState<number | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
   const debounceRef = useRef<number | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!query || selected?.name === query) {
@@ -93,6 +104,41 @@ export function CoinSearchPicker({
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
+
+  // 미리보기 URL은 컴포넌트 unmount 또는 변경 시 revoke.
+  useEffect(() => {
+    return () => {
+      if (imagePreview) URL.revokeObjectURL(imagePreview);
+    };
+  }, [imagePreview]);
+
+  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setImageError(null);
+    if (imagePreview) {
+      URL.revokeObjectURL(imagePreview);
+      setImagePreview(null);
+    }
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!ALLOWED_IMAGE_MIMES.includes(file.type)) {
+      setImageError("JPG/PNG/WebP/GIF만 가능");
+      e.target.value = "";
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      setImageError("5MB 이하 파일만 가능");
+      e.target.value = "";
+      return;
+    }
+    setImagePreview(URL.createObjectURL(file));
+  }
+
+  function clearImage() {
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
+    setImagePreview(null);
+    setImageError(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
 
   const kindMeta = POST_KINDS.find((k) => k.key === kind)!;
 
@@ -265,6 +311,42 @@ export function CoinSearchPicker({
           maxLength={500}
           placeholder="예: 어제 사면 됐는데 오늘 사버림. 이게 나야."
         />
+      </div>
+
+      <div>
+        <label className="text-xs text-bag-mute">인증 이미지 (선택)</label>
+        <p className="text-[10px] text-bag-mute opacity-70 mt-0.5">
+          5MB 이하 JPG/PNG/WebP/GIF. 잔고·이름 등 개인정보는 가린 뒤 올려주세요.
+        </p>
+        <input
+          ref={fileInputRef}
+          type="file"
+          name="image"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          onChange={handleImageChange}
+          className="mt-1.5 block w-full text-xs text-bag-mute file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border file:border-bag-border file:bg-bag-panel file:text-xs file:font-medium file:text-white hover:file:border-bag-accent hover:file:text-bag-accent file:cursor-pointer"
+        />
+        {imageError && (
+          <p className="text-bag-accent text-[11px] mt-1">{imageError}</p>
+        )}
+        {imagePreview && (
+          <div className="mt-2 relative inline-block">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={imagePreview}
+              alt="업로드 미리보기"
+              className="max-h-48 rounded-md border border-bag-border"
+            />
+            <button
+              type="button"
+              onClick={clearImage}
+              className="absolute top-1 right-1 rounded-full bg-black/70 hover:bg-black text-white w-6 h-6 flex items-center justify-center text-xs"
+              aria-label="이미지 제거"
+            >
+              ✕
+            </button>
+          </div>
+        )}
       </div>
 
       <button className="btn-primary w-full" type="submit" disabled={!selected}>

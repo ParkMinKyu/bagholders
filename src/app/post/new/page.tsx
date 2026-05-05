@@ -30,7 +30,11 @@ export default async function NewPostPage({
           {sp.error}
         </div>
       )}
-      <form method="post" action="/api/posts/create">
+      <form
+        method="post"
+        action="/api/posts/create"
+        encType="multipart/form-data"
+      >
         <CoinSearchPicker initialKind={initialKind} favorites={favoriteCoins} />
       </form>
     </div>

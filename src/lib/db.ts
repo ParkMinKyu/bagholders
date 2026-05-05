@@ -31,7 +31,7 @@ function getClient(): Client {
   return global.__bagDbClient;
 }
 
-const SCHEMA_VERSION = 5;
+const SCHEMA_VERSION = 6;
 
 async function ensureInit(): Promise<void> {
   if (!global.__bagDbInit) {
@@ -75,6 +75,11 @@ async function ensureInit(): Promise<void> {
       if (current > 0 && current < 3) {
         stmts.push("DROP TABLE IF EXISTS reactions", "DROP TABLE IF EXISTS posts");
       }
+      // v6: 기존 v3~v5 posts 테이블에 image_url 컬럼 추가.
+      // 신규 설치(current === 0)나 재생성(<v3)은 아래 CREATE TABLE에 이미 포함됨.
+      if (current >= 3 && current < 6) {
+        stmts.push("ALTER TABLE posts ADD COLUMN image_url TEXT");
+      }
       stmts.push(
         `CREATE TABLE IF NOT EXISTS posts (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -90,6 +95,7 @@ async function ensureInit(): Promise<void> {
           quantity REAL,
           comment TEXT NOT NULL DEFAULT '',
           pnl_pct REAL NOT NULL,
+          image_url TEXT,
           created_at INTEGER NOT NULL
         )`,
         `CREATE INDEX IF NOT EXISTS idx_posts_created ON posts(created_at DESC)`,
@@ -196,6 +202,7 @@ export type PostRow = {
   quantity: number | null;
   comment: string;
   pnl_pct: number;
+  image_url: string | null;
   created_at: number;
 };
 

@@ -1,10 +1,40 @@
 import { NextResponse } from "next/server";
+import { put } from "@vercel/blob";
 import { getCurrentUser } from "@/lib/auth";
 import { dbRun } from "@/lib/db";
 import { POST_KINDS, calcPnlPct } from "@/lib/posts";
 import { getPrice } from "@/lib/upbit";
 
 const VALID_KINDS = POST_KINDS.map((k) => k.key) as readonly string[];
+
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5MB
+const ALLOWED_IMAGE_MIMES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+]);
+
+async function uploadImage(file: File, userId: number): Promise<string | null> {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    console.warn("[posts/create] BLOB_READ_WRITE_TOKEN 없음 — 이미지 업로드 스킵");
+    return null;
+  }
+  if (!ALLOWED_IMAGE_MIMES.has(file.type)) return null;
+  if (file.size === 0 || file.size > MAX_IMAGE_BYTES) return null;
+  try {
+    const ext = file.type.split("/")[1] ?? "bin";
+    const key = `posts/${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const blob = await put(key, file, {
+      access: "public",
+      contentType: file.type,
+    });
+    return blob.url;
+  } catch (e) {
+    console.warn("[posts/create] blob upload failed:", e);
+    return null;
+  }
+}
 
 export async function POST(req: Request) {
   const user = await getCurrentUser();
@@ -38,7 +68,17 @@ export async function POST(req: Request) {
     return back("수량이 올바르지 않습니다.");
   }
 
-  const livePrice = await getPrice(tickerCode);
+  // 이미지 업로드는 가격 조회와 병렬 가능 — 둘 다 외부 IO.
+  const imageFile = form.get("image");
+  const imageUploadPromise =
+    imageFile instanceof File && imageFile.size > 0
+      ? uploadImage(imageFile, user.id)
+      : Promise.resolve(null);
+
+  const [livePrice, imageUrl] = await Promise.all([
+    getPrice(tickerCode),
+    imageUploadPromise,
+  ]);
   const now = Date.now();
 
   // 시세를 못 가져와도 글은 작성 가능 — 다음 피드 로드 시 lazy refresh가 갱신.
@@ -49,8 +89,8 @@ export async function POST(req: Request) {
   await dbRun(
     `INSERT INTO posts
        (user_id, kind, asset_type, ticker_code, ticker_symbol, ticker_name,
-        entry_price, last_price, last_priced_at, quantity, comment, pnl_pct, created_at)
-       VALUES (?, ?, 'crypto', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        entry_price, last_price, last_priced_at, quantity, comment, pnl_pct, image_url, created_at)
+       VALUES (?, ?, 'crypto', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       user.id,
       kind,
@@ -63,6 +103,7 @@ export async function POST(req: Request) {
       quantity,
       comment,
       pnl,
+      imageUrl,
       now,
     ],
   );
