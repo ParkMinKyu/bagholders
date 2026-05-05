@@ -256,7 +256,20 @@ export type RankingRow = {
   badness_worst: number;
 };
 
-async function refreshAllStaleTickers(): Promise<void> {
+export type CoinRankingRow = {
+  ticker_code: string;
+  ticker_symbol: string;
+  ticker_name: string;
+  post_count: number;
+  buy_count: number;
+  sell_count: number;
+  badness_avg: number;
+  badness_worst: number;
+  last_price: number;
+  last_priced_at: number;
+};
+
+export async function refreshAllStaleTickers(): Promise<void> {
   const now = Date.now();
   const stale = await dbAll<{ ticker_code: string }>(
     `SELECT DISTINCT ticker_code FROM posts WHERE last_priced_at < ?`,
@@ -283,8 +296,53 @@ async function refreshAllStaleTickers(): Promise<void> {
   });
 }
 
+export async function getCoinRanking(limit = 20): Promise<CoinRankingRow[]> {
+  // refreshAllStaleTickers는 호출자가 책임 (랭킹 페이지에서 1회 실행 후 병렬 쿼리).
+  const rows = await dbAll<{
+    ticker_code: string;
+    ticker_symbol: string;
+    ticker_name: string;
+    post_count: number;
+    buy_count: number;
+    sell_count: number;
+    badness_avg: number;
+    badness_worst: number;
+    last_price: number;
+    last_priced_at: number;
+  }>(
+    `SELECT
+       ticker_code,
+       ticker_symbol,
+       ticker_name,
+       COUNT(*) AS post_count,
+       SUM(CASE WHEN kind = 'buy_high' THEN 1 ELSE 0 END) AS buy_count,
+       SUM(CASE WHEN kind = 'sell_low' THEN 1 ELSE 0 END) AS sell_count,
+       AVG(CASE WHEN kind = 'buy_high' THEN -pnl_pct ELSE pnl_pct END) AS badness_avg,
+       MAX(CASE WHEN kind = 'buy_high' THEN -pnl_pct ELSE pnl_pct END) AS badness_worst,
+       MAX(last_price) AS last_price,
+       MAX(last_priced_at) AS last_priced_at
+     FROM posts
+     GROUP BY ticker_code, ticker_symbol, ticker_name
+     ORDER BY post_count DESC, badness_avg DESC
+     LIMIT ?`,
+    [limit],
+  );
+  return rows.map((r) => ({
+    ticker_code: r.ticker_code,
+    ticker_symbol: r.ticker_symbol,
+    ticker_name: r.ticker_name,
+    post_count: Number(r.post_count),
+    buy_count: Number(r.buy_count),
+    sell_count: Number(r.sell_count),
+    badness_avg: Number(r.badness_avg),
+    badness_worst: Number(r.badness_worst),
+    last_price: Number(r.last_price),
+    last_priced_at: Number(r.last_priced_at),
+  }));
+}
+
 export async function getRanking(viewerId: number | null, limit = 50): Promise<RankingRow[]> {
-  await refreshAllStaleTickers();
+  // refreshAllStaleTickers는 호출자가 책임 (랭킹 페이지에서 1회 실행 후 병렬 쿼리).
   const rows = await dbAll<{
     user_id: number;
     username: string;
