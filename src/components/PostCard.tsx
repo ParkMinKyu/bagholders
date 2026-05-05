@@ -13,34 +13,39 @@ function fmtTime(ts: number) {
   return new Date(ts).toLocaleDateString("ko-KR");
 }
 
-function fmtNum(n: number) {
-  if (!isFinite(n)) return "-";
-  return n.toLocaleString("ko-KR", { maximumFractionDigits: 2 });
-}
-
 function fmtKRW(n: number) {
-  if (!isFinite(n)) return "-";
-  if (Math.abs(n) >= 100000000) return `${(n / 100000000).toFixed(1)}억`;
-  if (Math.abs(n) >= 10000) return `${(n / 10000).toFixed(1)}만`;
-  return n.toLocaleString("ko-KR", { maximumFractionDigits: 0 });
+  if (!isFinite(n)) return "—";
+  if (n >= 1_000_000) return `₩${Math.round(n).toLocaleString("ko-KR")}`;
+  if (n >= 1) return `₩${n.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}`;
+  return `₩${n.toLocaleString("ko-KR", { maximumFractionDigits: 6 })}`;
 }
 
-function pnlColor(pnl: number) {
-  if (pnl <= -50) return "text-red-500";
-  if (pnl < 0) return "text-red-400";
-  if (pnl > 0) return "text-emerald-400";
-  return "text-bag-mute";
+function fmtKRWShort(n: number) {
+  if (!isFinite(n)) return "—";
+  const abs = Math.abs(n);
+  if (abs >= 100_000_000) return `${(n / 100_000_000).toFixed(1)}억`;
+  if (abs >= 10_000) return `${(n / 10_000).toFixed(1)}만`;
+  return Math.round(n).toLocaleString("ko-KR");
 }
 
-function pnlMessage(pnl: number) {
+function buyHighMessage(pnl: number) {
   if (pnl <= -80) return "거의 상폐";
   if (pnl <= -50) return "반토막+α";
   if (pnl <= -30) return "삼가 고인의";
   if (pnl <= -10) return "물렸음";
   if (pnl < 0) return "눈물 한 방울";
   if (pnl === 0) return "본전";
-  if (pnl > 30) return "운빨";
-  return "익절";
+  return "운빨 익절";
+}
+
+function sellLowMessage(pnl: number) {
+  if (pnl >= 200) return "n배 가즈아 반대 방향";
+  if (pnl >= 100) return "팔자마자 더블";
+  if (pnl >= 50) return "팔자마자 떡상";
+  if (pnl >= 20) return "조금만 참을걸";
+  if (pnl > 0) return "약손해";
+  if (pnl === 0) return "본전";
+  return "잘 팔았네";
 }
 
 export function PostCard({
@@ -50,45 +55,87 @@ export function PostCard({
   post: FeedPost;
   isAuthed: boolean;
 }) {
+  const isBuyHigh = post.kind === "buy_high";
+  const pnl = Number(post.pnl_pct);
+  const entry = Number(post.entry_price);
+  const last = Number(post.last_price);
+  const qty = post.quantity == null ? null : Number(post.quantity);
+
   const lossKRW =
-    post.quantity && isFinite(post.quantity)
-      ? (post.current_price - post.buy_price) * post.quantity
+    qty !== null && isFinite(qty)
+      ? isBuyHigh
+        ? (last - entry) * qty
+        : (last - entry) * qty
       : null;
 
+  const accentBorder = isBuyHigh ? "border-bag-accent/40" : "border-sky-400/40";
+  const pnlClass = isBuyHigh
+    ? pnl <= -50
+      ? "text-red-500"
+      : pnl < 0
+        ? "text-red-400"
+        : "text-emerald-400"
+    : pnl >= 50
+      ? "text-sky-300"
+      : pnl > 0
+        ? "text-sky-400"
+        : "text-bag-mute";
+  const message = isBuyHigh ? buyHighMessage(pnl) : sellLowMessage(pnl);
+
   return (
-    <article className="panel p-4 space-y-3">
+    <article className={`panel p-4 space-y-3 border-l-4 ${accentBorder}`}>
       <header className="flex items-center justify-between text-sm">
         <div className="flex items-center gap-2">
           <Link href={`/u/${post.username}`} className="font-bold hover:text-bag-accent">
             {post.username}
           </Link>
-          <span className="badge text-bag-mute border-bag-border">{post.category}</span>
+          <span
+            className={`badge ${
+              isBuyHigh
+                ? "border-bag-accent/40 text-bag-accent"
+                : "border-sky-400/40 text-sky-300"
+            }`}
+          >
+            {isBuyHigh ? "🤡 고점매수" : "😭 저점매도"}
+          </span>
         </div>
-        <span className="text-bag-mute text-xs">{fmtTime(post.created_at)}</span>
+        <span className="text-bag-mute text-xs">{fmtTime(Number(post.created_at))}</span>
       </header>
 
       <div>
         <div className="flex items-baseline justify-between flex-wrap gap-2">
-          <div className="text-lg font-black">{post.ticker}</div>
-          <div className={`text-2xl font-black ${pnlColor(post.pnl_pct)}`}>
-            {post.pnl_pct >= 0 ? "+" : ""}
-            {post.pnl_pct.toFixed(2)}%
-            <span className="text-xs font-medium ml-1 opacity-75">
-              {pnlMessage(post.pnl_pct)}
+          <div>
+            <span className="text-lg font-black">{post.ticker_name}</span>
+            <span className="ml-2 text-xs text-bag-mute font-mono">
+              {post.ticker_symbol}
             </span>
           </div>
+          <div className={`text-2xl font-black ${pnlClass}`}>
+            {pnl >= 0 ? "+" : ""}
+            {pnl.toFixed(2)}%
+            <span className="text-xs font-medium ml-1 opacity-75">{message}</span>
+          </div>
         </div>
-        <div className="text-xs text-bag-mute mt-1 flex flex-wrap gap-3">
-          <span>매수가 {fmtNum(post.buy_price)}</span>
-          <span>→</span>
-          <span>현재가 {fmtNum(post.current_price)}</span>
-          {post.quantity != null && <span>· 수량 {fmtNum(post.quantity)}</span>}
+        <div className="text-xs text-bag-mute mt-1 flex flex-wrap gap-x-3 gap-y-1">
+          <span>
+            {isBuyHigh ? "매수가" : "매도가"}{" "}
+            <span className="text-white font-mono">{fmtKRW(entry)}</span>
+          </span>
+          <span className="opacity-60">→</span>
+          <span>
+            현재가 <span className="text-white font-mono">{fmtKRW(last)}</span>
+          </span>
+          {qty !== null && <span>· 수량 {qty.toLocaleString("ko-KR")}</span>}
           {lossKRW !== null && (
-            <span className={pnlColor(post.pnl_pct)}>
-              · 평가손익 {lossKRW >= 0 ? "+" : "-"}
-              {fmtKRW(Math.abs(lossKRW))}
+            <span className={pnlClass}>
+              · {isBuyHigh ? "평가손익" : "기회손익"}{" "}
+              {lossKRW >= 0 ? "+" : "-"}
+              {fmtKRWShort(Math.abs(lossKRW))}
             </span>
           )}
+          <span className="opacity-50 ml-auto">
+            시세 {fmtTime(Number(post.last_priced_at))}
+          </span>
         </div>
         {post.comment && (
           <p className="mt-3 text-sm whitespace-pre-wrap leading-relaxed">{post.comment}</p>

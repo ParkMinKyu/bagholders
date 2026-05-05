@@ -1,28 +1,103 @@
-import { dbAll, dbGet, type PostRow, type UserRow } from "./db";
+import { dbAll, dbGet, dbRun, type PostRow, type UserRow } from "./db";
+import { getPrices } from "./coingecko";
 
-export const CATEGORIES = ["매수인증", "존버인증", "손절인증", "익절인증"] as const;
-export type Category = (typeof CATEGORIES)[number];
+export {
+  POST_KINDS,
+  REACTIONS,
+  PRICE_STALE_MS,
+  calcPnlPct,
+  badnessScore,
+} from "./post-kinds";
+export type { PostKind, ReactionKind } from "./post-kinds";
 
-export const REACTIONS = [
-  { kind: "kkk", emoji: "🤣", label: "ㅋㅋㅋㅋ" },
-  { kind: "rip", emoji: "🪦", label: "삼가 고인의 명복을" },
-  { kind: "wallet", emoji: "💸", label: "통장은 안녕하신가요" },
-  { kind: "noway", emoji: "🙅", label: "어림도 없지" },
-  { kind: "tear", emoji: "😭", label: "눈물의 손절" },
-] as const;
-
-export type ReactionKind = (typeof REACTIONS)[number]["kind"];
-
-export function calcPnlPct(buy: number, current: number): number {
-  if (!isFinite(buy) || buy <= 0) return 0;
-  return ((current - buy) / buy) * 100;
-}
+import { PRICE_STALE_MS, badnessScore, calcPnlPct, type PostKind } from "./post-kinds";
 
 export type FeedPost = PostRow & {
   username: string;
   reaction_counts: Record<string, number>;
   my_reactions: string[];
+  badness: number;
 };
+
+async function refreshStale(rows: PostRow[]): Promise<PostRow[]> {
+  const now = Date.now();
+  const stale = rows.filter((r) => now - Number(r.last_priced_at) > PRICE_STALE_MS);
+  if (stale.length === 0) return rows;
+
+  const tickers = Array.from(new Set(stale.map((r) => r.ticker_code)));
+  const prices = await getPrices(tickers);
+  if (Object.keys(prices).length === 0) return rows;
+
+  const fresh = new Map<number, PostRow>();
+  await Promise.all(
+    stale.map(async (r) => {
+      const newPrice = prices[r.ticker_code];
+      if (!newPrice || newPrice <= 0) return;
+      const newPnl = calcPnlPct(Number(r.entry_price), newPrice);
+      try {
+        await dbRun(
+          "UPDATE posts SET last_price = ?, last_priced_at = ?, pnl_pct = ? WHERE id = ?",
+          [newPrice, now, newPnl, r.id],
+        );
+      } catch {
+        // ignore write race
+      }
+      fresh.set(r.id, {
+        ...r,
+        last_price: newPrice,
+        last_priced_at: now,
+        pnl_pct: newPnl,
+      });
+    }),
+  );
+
+  return rows.map((r) => fresh.get(r.id) ?? r);
+}
+
+async function decoratePosts(
+  posts: (PostRow & { username: string })[],
+  viewerId: number | null,
+): Promise<FeedPost[]> {
+  if (posts.length === 0) return [];
+
+  const refreshed = (await refreshStale(posts)) as (PostRow & { username: string })[];
+
+  const ids = refreshed.map((p) => p.id);
+  const placeholders = ids.map(() => "?").join(",");
+
+  const counts = await dbAll<{ post_id: number; kind: string; n: number }>(
+    `SELECT post_id, kind, COUNT(*) AS n FROM reactions
+     WHERE post_id IN (${placeholders})
+     GROUP BY post_id, kind`,
+    ids,
+  );
+
+  const myReacts = viewerId
+    ? await dbAll<{ post_id: number; kind: string }>(
+        `SELECT post_id, kind FROM reactions
+         WHERE post_id IN (${placeholders}) AND user_id = ?`,
+        [...ids, viewerId],
+      )
+    : [];
+
+  const countMap = new Map<number, Record<string, number>>();
+  for (const r of counts) {
+    if (!countMap.has(r.post_id)) countMap.set(r.post_id, {});
+    countMap.get(r.post_id)![r.kind] = Number(r.n);
+  }
+  const myMap = new Map<number, string[]>();
+  for (const r of myReacts) {
+    if (!myMap.has(r.post_id)) myMap.set(r.post_id, []);
+    myMap.get(r.post_id)!.push(r.kind);
+  }
+
+  return refreshed.map((p) => ({
+    ...p,
+    reaction_counts: countMap.get(p.id) ?? {},
+    my_reactions: myMap.get(p.id) ?? [],
+    badness: badnessScore(p.kind, Number(p.pnl_pct)),
+  }));
+}
 
 export async function listFeed(
   viewerId: number | null,
@@ -53,69 +128,58 @@ export async function listUserPosts(
   return decoratePosts(posts, viewerId);
 }
 
-async function decoratePosts(
-  posts: (PostRow & { username: string })[],
-  viewerId: number | null,
-): Promise<FeedPost[]> {
-  if (posts.length === 0) return [];
-  const ids = posts.map((p) => p.id);
-  const placeholders = ids.map(() => "?").join(",");
-
-  const counts = await dbAll<{ post_id: number; kind: string; n: number }>(
-    `SELECT post_id, kind, COUNT(*) AS n FROM reactions
-     WHERE post_id IN (${placeholders})
-     GROUP BY post_id, kind`,
-    ids,
-  );
-
-  const myReacts = viewerId
-    ? await dbAll<{ post_id: number; kind: string }>(
-        `SELECT post_id, kind FROM reactions
-         WHERE post_id IN (${placeholders}) AND user_id = ?`,
-        [...ids, viewerId],
-      )
-    : [];
-
-  const countMap = new Map<number, Record<string, number>>();
-  for (const r of counts) {
-    if (!countMap.has(r.post_id)) countMap.set(r.post_id, {});
-    countMap.get(r.post_id)![r.kind] = Number(r.n);
-  }
-  const myMap = new Map<number, string[]>();
-  for (const r of myReacts) {
-    if (!myMap.has(r.post_id)) myMap.set(r.post_id, []);
-    myMap.get(r.post_id)!.push(r.kind);
-  }
-
-  return posts.map((p) => ({
-    ...p,
-    reaction_counts: countMap.get(p.id) ?? {},
-    my_reactions: myMap.get(p.id) ?? [],
-  }));
-}
-
 export type RankingRow = {
   user_id: number;
   username: string;
   post_count: number;
-  avg_loss: number;
-  worst_loss: number;
+  badness_avg: number;
+  badness_worst: number;
 };
 
-export async function getRanking(limit = 50): Promise<RankingRow[]> {
-  return dbAll<RankingRow>(
-    `SELECT u.id AS user_id, u.username,
-            COUNT(p.id) AS post_count,
-            AVG(p.pnl_pct) AS avg_loss,
-            MIN(p.pnl_pct) AS worst_loss
-     FROM users u
-     JOIN posts p ON p.user_id = u.id
-     GROUP BY u.id
-     HAVING COUNT(p.id) >= 1
-     ORDER BY avg_loss ASC
-     LIMIT ?`,
-    [limit],
+export async function getRanking(viewerId: number | null, limit = 50): Promise<RankingRow[]> {
+  // Ensure all posts are reasonably fresh by tagging recent feed
+  const all = await dbAll<PostRow & { username: string }>(
+    `SELECT p.*, u.username FROM posts p
+     JOIN users u ON u.id = p.user_id`,
+    [],
   );
+  if (all.length === 0) return [];
+  const refreshed = await refreshStale(all);
+
+  // Aggregate per-user badness (signed: +badness for buy_high losses and sell_low gains)
+  const byUser = new Map<
+    number,
+    { username: string; scores: number[] }
+  >();
+  for (const p of refreshed) {
+    const score = badnessScore(p.kind, Number(p.pnl_pct));
+    const existing = byUser.get(p.user_id);
+    if (existing) {
+      existing.scores.push(score);
+    } else {
+      byUser.set(p.user_id, {
+        username: (p as PostRow & { username: string }).username,
+        scores: [score],
+      });
+    }
+  }
+
+  const rows: RankingRow[] = [];
+  for (const [user_id, { username, scores }] of byUser) {
+    const avg = scores.reduce((s, n) => s + n, 0) / scores.length;
+    const worst = Math.max(...scores);
+    rows.push({
+      user_id,
+      username,
+      post_count: scores.length,
+      badness_avg: avg,
+      badness_worst: worst,
+    });
+  }
+  rows.sort((a, b) => b.badness_avg - a.badness_avg);
+  // Mark viewer for highlight if needed (caller can check via id)
+  void viewerId;
+  return rows.slice(0, limit);
 }
 
 export async function getUserByUsername(username: string): Promise<UserRow | null> {

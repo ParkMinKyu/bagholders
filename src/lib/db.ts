@@ -31,51 +31,88 @@ function getClient(): Client {
   return global.__bagDbClient;
 }
 
+const SCHEMA_VERSION = 2;
+
 async function ensureInit(): Promise<void> {
   if (!global.__bagDbInit) {
     global.__bagDbInit = (async () => {
       const c = getClient();
-      await c.batch(
-        [
-          `CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT NOT NULL UNIQUE,
-            password_hash TEXT NOT NULL,
-            bio TEXT NOT NULL DEFAULT '',
-            created_at INTEGER NOT NULL
-          )`,
-          `CREATE TABLE IF NOT EXISTS sessions (
-            token TEXT PRIMARY KEY,
-            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-            created_at INTEGER NOT NULL,
-            expires_at INTEGER NOT NULL
-          )`,
-          `CREATE TABLE IF NOT EXISTS posts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-            category TEXT NOT NULL,
-            ticker TEXT NOT NULL,
-            buy_price REAL NOT NULL,
-            current_price REAL NOT NULL,
-            quantity REAL,
-            comment TEXT NOT NULL DEFAULT '',
-            pnl_pct REAL NOT NULL,
-            created_at INTEGER NOT NULL
-          )`,
-          `CREATE INDEX IF NOT EXISTS idx_posts_created ON posts(created_at DESC)`,
-          `CREATE INDEX IF NOT EXISTS idx_posts_user ON posts(user_id)`,
-          `CREATE TABLE IF NOT EXISTS reactions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
-            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-            kind TEXT NOT NULL,
-            created_at INTEGER NOT NULL,
-            UNIQUE(post_id, user_id, kind)
-          )`,
-          `CREATE INDEX IF NOT EXISTS idx_reactions_post ON reactions(post_id)`,
-        ],
-        "deferred",
+
+      await c.execute(
+        `CREATE TABLE IF NOT EXISTS users (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          username TEXT NOT NULL UNIQUE,
+          password_hash TEXT NOT NULL,
+          bio TEXT NOT NULL DEFAULT '',
+          created_at INTEGER NOT NULL
+        )`,
       );
+      await c.execute(
+        `CREATE TABLE IF NOT EXISTS sessions (
+          token TEXT PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          created_at INTEGER NOT NULL,
+          expires_at INTEGER NOT NULL
+        )`,
+      );
+      await c.execute(
+        `CREATE TABLE IF NOT EXISTS schema_meta (
+          key TEXT PRIMARY KEY,
+          value INTEGER NOT NULL
+        )`,
+      );
+
+      const ver = await c.execute({
+        sql: "SELECT value FROM schema_meta WHERE key = 'posts_version'",
+        args: [],
+      });
+      const current = (ver.rows[0]?.value as number | undefined) ?? 0;
+
+      if (current < SCHEMA_VERSION) {
+        await c.execute("DROP TABLE IF EXISTS reactions");
+        await c.execute("DROP TABLE IF EXISTS posts");
+      }
+
+      await c.execute(
+        `CREATE TABLE IF NOT EXISTS posts (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          kind TEXT NOT NULL,
+          asset_type TEXT NOT NULL,
+          ticker_code TEXT NOT NULL,
+          ticker_symbol TEXT NOT NULL,
+          ticker_name TEXT NOT NULL,
+          entry_price REAL NOT NULL,
+          last_price REAL NOT NULL,
+          last_priced_at INTEGER NOT NULL,
+          quantity REAL,
+          comment TEXT NOT NULL DEFAULT '',
+          pnl_pct REAL NOT NULL,
+          created_at INTEGER NOT NULL
+        )`,
+      );
+      await c.execute(`CREATE INDEX IF NOT EXISTS idx_posts_created ON posts(created_at DESC)`);
+      await c.execute(`CREATE INDEX IF NOT EXISTS idx_posts_user ON posts(user_id)`);
+      await c.execute(`CREATE INDEX IF NOT EXISTS idx_posts_ticker ON posts(ticker_code)`);
+
+      await c.execute(
+        `CREATE TABLE IF NOT EXISTS reactions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          kind TEXT NOT NULL,
+          created_at INTEGER NOT NULL,
+          UNIQUE(post_id, user_id, kind)
+        )`,
+      );
+      await c.execute(`CREATE INDEX IF NOT EXISTS idx_reactions_post ON reactions(post_id)`);
+
+      if (current < SCHEMA_VERSION) {
+        await c.execute({
+          sql: "INSERT OR REPLACE INTO schema_meta (key, value) VALUES ('posts_version', ?)",
+          args: [SCHEMA_VERSION],
+        });
+      }
     })();
   }
   await global.__bagDbInit;
@@ -121,10 +158,14 @@ export type UserRow = {
 export type PostRow = {
   id: number;
   user_id: number;
-  category: string;
-  ticker: string;
-  buy_price: number;
-  current_price: number;
+  kind: "buy_high" | "sell_low";
+  asset_type: "crypto";
+  ticker_code: string;
+  ticker_symbol: string;
+  ticker_name: string;
+  entry_price: number;
+  last_price: number;
+  last_priced_at: number;
   quantity: number | null;
   comment: string;
   pnl_pct: number;
