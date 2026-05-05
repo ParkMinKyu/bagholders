@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { TickerStat, TickerSideStat } from "@/lib/posts";
 import {
   damageEquivalent,
@@ -38,10 +39,18 @@ function TickerRow({ stat }: { stat: TickerStat }) {
     <div className="panel p-3">
       <div className="flex items-baseline justify-between gap-2 flex-wrap">
         <div>
-          <span className="font-bold">{stat.ticker_name}</span>
-          <span className="ml-2 text-[11px] font-mono text-bag-mute">
-            {stat.ticker_symbol}
-          </span>
+          <Link
+            href={`/t/${encodeURIComponent(stat.ticker_code)}`}
+            prefetch={false}
+            className="hover:text-bag-accent transition"
+          >
+            <span className="font-bold hover:underline underline-offset-2">
+              {stat.ticker_name}
+            </span>
+            <span className="ml-2 text-[11px] font-mono text-bag-mute">
+              {stat.ticker_symbol}
+            </span>
+          </Link>
           <span className="ml-2 text-[10px] text-bag-mute">
             인증 {stat.total_count}건
           </span>

@@ -79,12 +79,18 @@ export function PostCard({
 
       <div>
         <div className="flex items-baseline justify-between flex-wrap gap-2">
-          <div>
-            <span className="text-lg font-black">{post.ticker_name}</span>
+          <Link
+            href={`/t/${encodeURIComponent(post.ticker_code)}`}
+            prefetch={false}
+            className="group/ticker hover:text-bag-accent transition"
+          >
+            <span className="text-lg font-black group-hover/ticker:underline underline-offset-2">
+              {post.ticker_name}
+            </span>
             <span className="ml-2 text-xs text-bag-mute font-mono">
               {post.ticker_symbol}
             </span>
-          </div>
+          </Link>
           <div className={`text-2xl font-black ${pnlClass}`}>
             {displayPnl >= 0 ? "+" : ""}
             {displayPnl.toFixed(2)}%
