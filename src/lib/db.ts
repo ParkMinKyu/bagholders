@@ -31,7 +31,7 @@ function getClient(): Client {
   return global.__bagDbClient;
 }
 
-const SCHEMA_VERSION = 7;
+const SCHEMA_VERSION = 8;
 
 async function ensureInit(): Promise<void> {
   if (!global.__bagDbInit) {
@@ -140,6 +140,16 @@ async function ensureInit(): Promise<void> {
         )`,
         `CREATE INDEX IF NOT EXISTS idx_comments_post ON comments(post_id, created_at DESC)`,
         `CREATE INDEX IF NOT EXISTS idx_comments_user ON comments(user_id)`,
+        // v8: 방명록 (additive). owner=프로필 주인, author=글쓴이.
+        `CREATE TABLE IF NOT EXISTS guestbook_entries (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          author_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          body TEXT NOT NULL,
+          created_at INTEGER NOT NULL
+        )`,
+        `CREATE INDEX IF NOT EXISTS idx_guestbook_owner ON guestbook_entries(owner_id, created_at DESC)`,
+        `CREATE INDEX IF NOT EXISTS idx_guestbook_author ON guestbook_entries(author_id)`,
       );
 
       await c.batch(stmts, "deferred");

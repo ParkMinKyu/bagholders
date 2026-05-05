@@ -10,9 +10,11 @@ import {
 } from "@/lib/posts";
 import { getFollowCounts, isFollowing } from "@/lib/follows";
 import { getFavoriteCount } from "@/lib/favorites";
+import { listGuestbook } from "@/lib/guestbook";
 import { PostCard } from "@/components/PostCard";
 import { TickerSummary } from "@/components/TickerSummary";
-import { damageEquivalent, fmtKRWShort, pctHumor } from "@/lib/format";
+import { GuestbookForm } from "@/components/GuestbookForm";
+import { damageEquivalent, fmtKRWShort, fmtTime, pctHumor } from "@/lib/format";
 import { getProfileTitle } from "@/lib/title";
 
 export const dynamic = "force-dynamic";
@@ -31,12 +33,13 @@ export default async function ProfilePage({
   if (!target) notFound();
 
   const isSelf = !!viewer && viewer.id === target.id;
-  const [posts, followCounts, viewerFollowsTarget, favCount, rankInfo] = await Promise.all([
+  const [posts, followCounts, viewerFollowsTarget, favCount, rankInfo, guestbook] = await Promise.all([
     listUserPosts(target.id, viewer?.id ?? null),
     getFollowCounts(target.id),
     viewer && !isSelf ? isFollowing(viewer.id, target.id) : Promise.resolve(false),
     getFavoriteCount(target.id),
     getUserRank(target.id),
+    listGuestbook(target.id, 100),
   ]);
 
   const total = posts.length;
@@ -268,6 +271,51 @@ export default async function ProfilePage({
           </div>
         </>
       )}
+
+      <section className="panel p-4 space-y-3">
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-xs font-bold text-bag-mute uppercase tracking-wider">
+            ✍️ 방명록 ({guestbook.length})
+          </h2>
+        </div>
+        {viewer ? (
+          <GuestbookForm ownerId={target.id} isSelf={isSelf} />
+        ) : (
+          <div className="text-xs text-bag-mute">
+            <Link href="/login" prefetch={false} className="text-bag-accent hover:underline">
+              로그인
+            </Link>
+            {" "}하면 방명록을 남길 수 있어요.
+          </div>
+        )}
+        {guestbook.length === 0 ? (
+          <div className="text-center text-bag-mute text-xs py-6">
+            아직 아무도 다녀가지 않았습니다.
+          </div>
+        ) : (
+          <ol className="divide-y divide-bag-border -mx-4">
+            {guestbook.map((g) => (
+              <li key={g.id} className="px-4 py-3">
+                <div className="flex items-baseline justify-between">
+                  <Link
+                    href={`/u/${g.author_username}`}
+                    prefetch={false}
+                    className="font-bold text-sm hover:text-bag-accent"
+                  >
+                    @{g.author_username}
+                  </Link>
+                  <span className="text-[11px] text-bag-mute">
+                    {fmtTime(g.created_at)}
+                  </span>
+                </div>
+                <p className="text-sm whitespace-pre-wrap leading-relaxed mt-1">
+                  {g.body}
+                </p>
+              </li>
+            ))}
+          </ol>
+        )}
+      </section>
     </div>
   );
 }

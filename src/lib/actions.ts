@@ -3,6 +3,7 @@
 import { getCurrentUser } from "./auth";
 import { addComment } from "./comments";
 import { dbGet, dbRun } from "./db";
+import { addGuestbookEntry } from "./guestbook";
 import { REACTIONS } from "./post-kinds";
 
 export type ReactionToggleResult = {
@@ -55,6 +56,24 @@ export async function addCommentAction(
   if (!Number.isFinite(postId)) return { ok: false, error: "잘못된 게시물입니다." };
   if (!body.trim()) return { ok: false, error: "내용을 입력해주세요." };
   const r = await addComment(postId, user.id, body);
+  if (!r) return { ok: false, error: "내용을 입력해주세요." };
+  return { ok: true };
+}
+
+export type GuestbookAddResult = {
+  ok: boolean;
+  error?: string;
+};
+
+export async function addGuestbookAction(
+  ownerId: number,
+  body: string,
+): Promise<GuestbookAddResult> {
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "로그인이 필요합니다." };
+  if (!Number.isFinite(ownerId)) return { ok: false, error: "대상이 올바르지 않습니다." };
+  if (!body.trim()) return { ok: false, error: "내용을 입력해주세요." };
+  const r = await addGuestbookEntry(ownerId, user.id, body);
   if (!r) return { ok: false, error: "내용을 입력해주세요." };
   return { ok: true };
 }
