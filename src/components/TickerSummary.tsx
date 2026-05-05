@@ -61,6 +61,7 @@ function TickerRow({ stat }: { stat: TickerStat }) {
 
 function DamageRow({ krw }: { krw: number }) {
   const negative = krw < 0;
+  const positive = krw > 0;
   const eq = damageEquivalent(krw);
   return (
     <div className="flex items-baseline justify-between pt-2 mt-2 border-t border-bag-border text-xs">
@@ -70,14 +71,16 @@ function DamageRow({ krw }: { krw: number }) {
       <div className="text-right">
         <span
           className={`font-mono font-black ${
-            negative ? "text-red-400" : krw > 0 ? "text-emerald-400" : "text-bag-mute"
+            negative ? "text-red-400" : positive ? "text-emerald-400" : "text-bag-mute"
           }`}
         >
           {krw >= 0 ? "+" : "-"}
           {fmtKRWShort(Math.abs(krw))}
         </span>
-        {negative && eq && (
-          <div className="text-[10px] text-bag-mute mt-0.5">≈ {eq} 날렸음</div>
+        {eq && (
+          <div className="text-[10px] text-bag-mute mt-0.5">
+            ≈ {eq} {negative ? "날렸음" : "운빨로 벌었음"}
+          </div>
         )}
       </div>
     </div>

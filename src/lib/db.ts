@@ -147,6 +147,14 @@ export async function dbRun(
   };
 }
 
+export async function dbBatch(
+  stmts: { sql: string; args: InValue[] }[],
+): Promise<void> {
+  if (stmts.length === 0) return;
+  await ensureInit();
+  await getClient().batch(stmts, "deferred");
+}
+
 export type UserRow = {
   id: number;
   username: string;

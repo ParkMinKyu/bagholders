@@ -115,9 +115,10 @@ export default async function ProfilePage({
                 {totalDamageKRW >= 0 ? "+" : "-"}
                 {fmtKRWShort(Math.abs(totalDamageKRW))}
               </div>
-              {totalDamageKRW < 0 && damageEquivalent(totalDamageKRW) && (
+              {damageEquivalent(totalDamageKRW) && (
                 <div className="text-[11px] text-bag-mute mt-0.5">
-                  ≈ {damageEquivalent(totalDamageKRW)} 날렸음
+                  ≈ {damageEquivalent(totalDamageKRW)}{" "}
+                  {totalDamageKRW < 0 ? "날렸음" : "운빨로 벌었음"}
                 </div>
               )}
             </div>
